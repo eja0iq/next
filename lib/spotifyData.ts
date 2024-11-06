@@ -273,9 +273,10 @@ const calculateTopGenre = (artists: any[]) => {
     return acc;
   }, {});
   
-  return Object.entries(genreCounts).reduce((a, b) => 
-    a[1] > b[1] ? a : b
-  )[0] || 'N/A';
+  // Add type annotation for the reduce function
+  return Object.entries(genreCounts).reduce<[string, number]>((a, b) => {
+    return a[1] > (b[1] as number) ? a : [b[0], b[1] as number];
+  }, ['', 0])[0] || 'N/A';
 };
 
 const getTimeRangeMultiplier = (timeRange: string) => {
