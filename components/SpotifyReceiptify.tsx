@@ -231,25 +231,42 @@ export default function SpotifyReceiptify() {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile) {
-        // Check if receiptRef.current exists
+        // For mobile devices
         if (!receiptRef.current) {
           throw new Error("Receipt element not found");
         }
 
-        // Direct Instagram Story sharing on mobile
-        const imageUrl = await domtoimage.toPng(receiptRef.current);
-        window.location.href = `instagram://story?media=${encodeURIComponent(
-          imageUrl
-        )}`;
+        // Generate the image as a Blob instead of data URL
+        const blob = await domtoimage.toBlob(receiptRef.current);
+
+        // Create a File from the Blob
+        const file = new File([blob], "spotify-receipt.png", {
+          type: "image/png",
+        });
+
+        // Use Web Share API if available
+        if (navigator.share) {
+          await navigator.share({
+            files: [file],
+            title: "My Spotify Receiptify",
+            text: "Check out my Spotify stats!",
+          });
+        } else {
+          // Fallback for older devices
+          const imageUrl = await domtoimage.toPng(receiptRef.current);
+          window.location.href = `instagram://story?media=${encodeURIComponent(
+            imageUrl
+          )}`;
+        }
       } else {
-        // Show dialog for PC users
+        // For desktop: Show instruction toast
         toast("Instagram story sharing is only available on mobile devices", {
           duration: 3000,
           position: "top-center",
           icon: "ℹ️",
         });
 
-        // Fallback to regular sharing on PC
+        // Fallback to regular sharing on desktop
         if (navigator.share) {
           await navigator.share({
             title: "My Spotify Receiptify",
