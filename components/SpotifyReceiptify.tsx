@@ -231,32 +231,32 @@ export default function SpotifyReceiptify() {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile) {
-        // For mobile devices
         if (!receiptRef.current) {
           throw new Error("Receipt element not found");
         }
 
-        // Generate the image as a Blob instead of data URL
+        // Generate the image as a Blob
         const blob = await domtoimage.toBlob(receiptRef.current);
-
-        // Create a File from the Blob
         const file = new File([blob], "spotify-receipt.png", {
           type: "image/png",
         });
 
         // Use Web Share API if available
-        if (navigator.share) {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: "My Spotify Receiptify",
             text: "Check out my Spotify stats!",
           });
         } else {
-          // Fallback for older devices
-          const imageUrl = await domtoimage.toPng(receiptRef.current);
-          window.location.href = `instagram://story?media=${encodeURIComponent(
-            imageUrl
-          )}`;
+          // Fallback: Inform the user about the limitation
+          toast.error(
+            "Sharing to Instagram Stories directly is not supported on this device. Please download the image and share it manually.",
+            {
+              duration: 4000,
+              position: "top-center",
+            }
+          );
         }
       } else {
         // For desktop: Show instruction toast
