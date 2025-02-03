@@ -9,7 +9,7 @@ interface TokenResponse {
 }
 
 export const exchangeCodeForTokens = async (code: string): Promise<TokenResponse> => {
-  if (!process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET || !process.env.NEXT_PUBLIC_REDIRECT_URI) {
+  if (!process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
     throw new Error('Missing required environment variables');
   }
 
@@ -23,14 +23,6 @@ const params = new URLSearchParams({
   redirect_uri: getCallbackUrl(),
   grant_type: 'authorization_code'
 });
-
-    // Log request details for debugging (remove in production)
-    console.log('Token exchange request details:', {
-      redirectUri: process.env.NEXT_PUBLIC_REDIRECT_URI,
-      codeLength: code.length,
-      hasClientId: !!process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
-      hasClientSecret: !!process.env.SPOTIFY_CLIENT_SECRET
-    });
 
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',

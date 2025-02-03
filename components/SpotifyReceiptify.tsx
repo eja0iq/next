@@ -719,12 +719,17 @@ export default function SpotifyReceiptify() {
                         );
                       }}
                     >
-                      {tracks[0].album?.images[0]?.url ? (
+                      {tracks[0].album?.images ? (
                         <>
                           <img
-                            src={tracks[0].album.images[0].url}
+                            src={
+                              tracks[0].album.images[2]?.url ||
+                              tracks[0].album.images[0].url
+                            }
                             alt={tracks[0].name}
                             className="w-full h-full rounded-full object-cover"
+                            loading="eager"
+                            fetchPriority="high"
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center transition-all duration-300 rounded-full">
                             <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -789,12 +794,16 @@ export default function SpotifyReceiptify() {
                               );
                             }}
                           >
-                            {track.album?.images[0]?.url ? (
+                            {track.album?.images ? (
                               <>
                                 <img
-                                  src={track.album.images[0].url}
+                                  src={
+                                    track.album.images[2]?.url ||
+                                    track.album.images[0].url
+                                  }
                                   alt={track.name}
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center transition-all duration-300">
                                   <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -853,11 +862,16 @@ export default function SpotifyReceiptify() {
                         </div>
                       </div>
                       <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center border-8 border-[#1e1e1e]">
-                        {topArtists[0].images[0]?.url ? (
+                        {topArtists[0].images ? (
                           <img
-                            src={topArtists[0].images[0].url}
+                            src={
+                              topArtists[0].images[1]?.url ||
+                              topArtists[0].images[0].url
+                            }
                             alt={topArtists[0].name}
                             className="w-full h-full rounded-full object-cover"
+                            loading="eager"
+                            fetchPriority="high"
                           />
                         ) : (
                           <div className="w-16 h-16 sm:w-24 sm:h-24 bg-[#1e1e1e] rounded-full flex items-center justify-center">
@@ -898,11 +912,14 @@ export default function SpotifyReceiptify() {
                           {(index + 2).toString().padStart(2, "0")}
                         </span>
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#282828] flex items-center justify-center rounded-md overflow-hidden group-hover:bg-[#1DB954] transition-colors duration-300">
-                          {artist.images[0]?.url ? (
+                          {artist.images ? (
                             <img
-                              src={artist.images[0].url}
+                              src={
+                                artist.images[2]?.url || artist.images[0].url
+                              }
                               alt={artist.name}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                           ) : (
                             <User className="w-5 h-5 sm:w-6 sm:h-6 text-[#b3b3b3] group-hover:text-black transition-colors duration-300" />
