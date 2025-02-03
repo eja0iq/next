@@ -245,8 +245,24 @@ export default function SpotifyReceiptify() {
           type: "image/png",
         });
 
-        // Use Web Share API if available
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Check if sharing to Instagram Stories is supported
+        const isInstagramShareSupported = navigator.canShare &&
+          navigator.canShare({ files: [file] }) &&
+          /Instagram/.test(navigator.userAgent);
+
+        if (isInstagramShareSupported) {
+          // Share to Instagram Stories
+          await navigator.share({
+            files: [file],
+            title: "My Spotify Receiptify",
+            text: "Check out my Spotify stats!",
+          });
+          toast.success("Opening Instagram Stories...", {
+            duration: 3000,
+            position: "top-center",
+          });
+        } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          // Regular mobile share
           await navigator.share({
             files: [file],
             title: "My Spotify Receiptify",
