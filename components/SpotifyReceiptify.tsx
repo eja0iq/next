@@ -378,78 +378,34 @@ export default function SpotifyReceiptify() {
   };
 
   const downloadAsImage = async () => {
-    if (!receiptRef.current) {
-      toast.error("Receipt element not found. Please try again.");
-      return;
-    }
+    if (!receiptRef.current) return;
 
     const toastId = toast.loading("Preparing receipt...");
 
     try {
-      // Store original styles
-      const originalStyles = {
-        width: receiptRef.current.style.width,
-        height: receiptRef.current.style.height,
-        transform: receiptRef.current.style.transform,
-        transformOrigin: receiptRef.current.style.transformOrigin,
-      };
-
-      // Set fixed width and calculate height
-      receiptRef.current.style.width = "758px";
-      const height = customization.tracks === 10 && customization.metric !== "top_genres"
-        ? "1384px"
-        : `${receiptRef.current.scrollHeight}px`;
-
-      // Apply temporary styles for image generation
-      Object.assign(receiptRef.current.style, {
-        height,
-        transform: "scale(1)",
-        transformOrigin: "top left",
-      });
-
       toast.loading("Generating image...", { id: toastId });
 
-      // Generate the image
       const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        width: 758,
-        height: parseInt(height),
         quality: 0.95,
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left",
-        },
+        bgcolor: receiptRef.current.classList.contains("bg-[#181818]") ? "#181818" : "#ffffff",
       });
-
-      // Restore original styles
-      Object.assign(receiptRef.current.style, originalStyles);
 
       toast.loading("Processing download...", { id: toastId });
 
-      // Handle download based on browser
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        // For iOS, open image in new tab
-        window.open(dataUrl, '_blank');
-        toast.success("Image opened in new tab. Long press to save!", { id: toastId });
-      } else {
-        // For other browsers, trigger download
-        const link = document.createElement("a");
-        link.download = "spotify-receipt.png";
-        link.href = dataUrl;
-        link.click();
-        toast.success("Image downloaded successfully!", { id: toastId });
-      }
+      const link = document.createElement("a");
+      link.download = "spotify-receipt.png";
+      link.href = dataUrl;
+      link.click();
+
+      toast.dismiss(toastId);
+      toast.success("Image downloaded successfully!");
     } catch (error) {
       console.error("Error generating image:", error);
+      toast.dismiss(toastId);
       toast.error(
-        error instanceof Error
-          ? `Failed to generate image: ${error.message}`
-          : "Failed to generate image. Please try again or take a screenshot instead.",
-        { id: toastId, duration: 5000 }
+        "Failed to generate image. Please try again or take a screenshot instead.",
+        { duration: 5000 }
       );
-    } finally {
-      // Ensure toast is dismissed in all cases
-      setTimeout(() => toast.dismiss(toastId), 5000);
     }
   };
 
