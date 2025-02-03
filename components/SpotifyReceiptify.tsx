@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import CustomizationPanel from "./CustomizationPanel";
 import LoginPage from "./LoginPage";
-import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image";
 import {
   getUserProfile,
   getTopTracks,
@@ -230,116 +230,66 @@ export default function SpotifyReceiptify() {
   };
 
   const handleShare = async () => {
-    if (!receiptRef.current) {
-      toast.error("Receipt element not found");
-      return;
-    }
-
-    const toastId = toast.loading("Preparing to share...");
-
     try {
-      // Optimize the element for capture
-      const element = receiptRef.current;
-      const originalStyles = element.style.cssText;
-      element.style.cssText = `
-        ${originalStyles}
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: ${element.offsetWidth}px;
-        height: ${element.offsetHeight}px;
-      `;
+      // Check if running on mobile device
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      // Use html2canvas with consistent settings for all devices
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: element.classList.contains("bg-[#181818]")
-          ? "#181818"
-          : "#ffffff",
-        ignoreElements: (el) => {
-          return (
-            el.classList?.contains("hover-card") ||
-            el.classList?.contains("tooltip") ||
-            el.classList?.contains("dropdown-menu")
-          );
-        },
-        onclone: (doc, elm) => {
-          // Ensure proper styling in cloned element
-          elm.style.transform = "none";
-          elm.style.borderRadius = "0";
-        },
-        imageTimeout: 0,
-        removeContainer: true,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-      });
+      if (isMobile) {
+        if (!receiptRef.current) {
+          throw new Error("Receipt element not found");
+        }
 
-      // Restore original styles
-      element.style.cssText = originalStyles;
+        // Generate the image as a Blob
+        const blob = await domtoimage.toBlob(receiptRef.current);
+        const file = new File([blob], "spotify-receipt.png", {
+          type: "image/png",
+        });
 
-      // Handle iOS Safari and Opera browser cases specifically
-      const isIOSSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent) && /WebKit/i.test(navigator.userAgent) && !/(CriOS|OPiOS)/i.test(navigator.userAgent);
-      const isOpera = /OPR|Opera/i.test(navigator.userAgent);
-
-      // Convert to PNG for better compatibility
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-      if (isIOSSafari || isOpera) {
-        // For iOS Safari and Opera, open image in new tab
-        const newTab = window.open();
-        if (newTab) {
-          newTab.document.write(`<img src="${dataUrl}" alt="Spotify Receipt" style="max-width: 100%; height: auto;"/>`);
-          newTab.document.title = "Spotify Receipt - Long press to save";
-          toast.success("Image opened in new tab. Long press to save!", { duration: 5000 });
+        // Use Web Share API if available
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "My Spotify Receiptify",
+            text: "Check out my Spotify stats!",
+          });
+          toast.success("Shared successfully!", {
+            duration: 3000,
+            position: "top-center",
+          });
         } else {
-          toast.error("Please allow popups to download the image");
+          // Fallback to download on mobile
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "spotify-receipt.png";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          toast.success("Image downloaded successfully!", {
+            duration: 3000,
+            position: "top-center",
+          });
         }
       } else {
-        // For other browsers, try Web Share API first
-        try {
-          const blob = await fetch(dataUrl).then(res => res.blob());
-          const file = new File([blob], "spotify-receipt.png", { type: "image/png" });
-
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "My Spotify Receiptify",
-              text: "Check out my Spotify stats!",
-            });
-            toast.success("Shared successfully!");
-          } else {
-            // Fallback to direct download
-            const link = document.createElement("a");
-            link.href = dataUrl;
-            link.download = "spotify-receipt.png";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.success("Image downloaded successfully!");
-          }
-        } catch (error) {
-          console.error("Share failed:", error);
-          // Final fallback - open in new tab
-          const newTab = window.open();
-          if (newTab) {
-            newTab.document.write(`<img src="${dataUrl}" alt="Spotify Receipt" style="max-width: 100%; height: auto;"/>`);
-            newTab.document.title = "Spotify Receipt - Right click to save";
-            toast.success("Image opened in new tab. Right click to save!", { duration: 5000 });
-          } else {
-            toast.error("Please allow popups to download the image");
-          }
-        }
+        // For desktop: download directly
+        if (!receiptRef.current) return;
+        const dataUrl = await domtoimage.toPng(receiptRef.current);
+        const link = document.createElement("a");
+        link.download = "spotify-receipt.png";
+        link.href = dataUrl;
+        link.click();
+        toast.success("Image downloaded successfully!", {
+          duration: 3000,
+          position: "top-center",
+        });
       }
     } catch (error) {
-      console.error("Error in share process:", error);
-      toast.error(
-        "Failed to share. Please try again or take a screenshot instead."
-      );
-    } finally {
-      toast.dismiss(toastId);
+      console.error("Error sharing:", error);
+      toast.error("Failed to share. Please try again.", {
+        duration: 3000,
+        position: "top-center",
+      });
     }
   };
 
@@ -435,77 +385,20 @@ export default function SpotifyReceiptify() {
     try {
       toast.loading("Generating image...", { id: toastId });
 
-      // Optimize the element for capture
-      const element = receiptRef.current;
-      const originalStyles = element.style.cssText;
-      element.style.cssText = `
-        ${originalStyles}
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: ${element.offsetWidth}px;
-        height: ${element.offsetHeight}px;
-      `;
-
-      // Use html2canvas with consistent settings for all devices
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: element.classList.contains("bg-[#181818]")
-          ? "#181818"
-          : "#ffffff",
-        ignoreElements: (el) => {
-          return (
-            el.classList?.contains("hover-card") ||
-            el.classList?.contains("tooltip") ||
-            el.classList?.contains("dropdown-menu")
-          );
-        },
-        imageTimeout: 0,
-        removeContainer: true,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
+      const dataUrl = await domtoimage.toPng(receiptRef.current, {
+        quality: 0.95,
+        bgcolor: receiptRef.current.classList.contains("bg-[#181818]") ? "#181818" : "#ffffff",
       });
-
-      // Restore original styles
-      element.style.cssText = originalStyles;
-
-      toast.loading("Processing image...", { id: toastId });
-
-      // Handle iOS Safari and Opera browser cases specifically
-      const isIOSSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent) && /WebKit/i.test(navigator.userAgent) && !/(CriOS|OPiOS)/i.test(navigator.userAgent);
-      const isOpera = /OPR|Opera/i.test(navigator.userAgent);
-
-      // Convert to PNG for better compatibility
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
 
       toast.loading("Processing download...", { id: toastId });
 
-      if (isIOSSafari || isOpera) {
-        // For iOS Safari and Opera, open image in new tab
-        const newTab = window.open();
-        if (newTab) {
-          newTab.document.write(`<img src="${dataUrl}" alt="Spotify Receipt" style="max-width: 100%; height: auto;"/>`);
-          newTab.document.title = "Spotify Receipt - Long press to save";
-          toast.dismiss(toastId);
-          toast.success("Image opened in new tab. Long press to save!", { duration: 5000 });
-        } else {
-          toast.dismiss(toastId);
-          toast.error("Please allow popups to download the image");
-        }
-      } else {
-        // For other browsers, use direct download
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "spotify-receipt.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.dismiss(toastId);
-        toast.success("Image downloaded successfully!");
-      }
+      const link = document.createElement("a");
+      link.download = "spotify-receipt.png";
+      link.href = dataUrl;
+      link.click();
+
+      toast.dismiss(toastId);
+      toast.success("Image downloaded successfully!");
     } catch (error) {
       console.error("Error generating image:", error);
       toast.dismiss(toastId);
