@@ -230,112 +230,96 @@ export default function SpotifyReceiptify() {
   };
 
   const handleShare = async () => {
+    if (!receiptRef.current) {
+      toast.error("Receipt element not found");
+      return;
+    }
+
+    const toastId = toast.loading("Preparing to share...");
+
     try {
+      // Optimize the element for capture
+      const element = receiptRef.current;
+      const originalStyles = element.style.cssText;
+      element.style.cssText = `
+        ${originalStyles}
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: ${element.offsetWidth}px;
+        height: ${element.offsetHeight}px;
+      `;
+
+      // Use html2canvas with optimized settings
+      const canvas = await html2canvas(element, {
+        scale: 1, // Lower scale for better performance
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: element.classList.contains("bg-[#181818]")
+          ? "#181818"
+          : "#ffffff",
+        ignoreElements: (el) => {
+          return (
+            el.classList?.contains("hover-card") ||
+            el.classList?.contains("tooltip") ||
+            el.classList?.contains("dropdown-menu")
+          );
+        },
+        onclone: (doc, elm) => {
+          // Ensure proper styling in cloned element
+          elm.style.transform = "none";
+          elm.style.borderRadius = "0";
+        },
+      });
+
+      // Restore original styles
+      element.style.cssText = originalStyles;
+
+      // Convert to blob with lower quality for better performance
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.8);
+      });
+
+      // Create file for sharing
+      const file = new File([blob], "spotify-receipt.jpg", {
+        type: "image/jpeg",
+      });
+
       // Check if running on mobile device
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      if (isMobile) {
-        if (!receiptRef.current) {
-          throw new Error("Receipt element not found");
-        }
-
-        const toastId = toast.loading("Preparing image...");
-
-        try {
-          // Use html2canvas to generate the image
-          const canvas = await html2canvas(receiptRef.current, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            backgroundColor: receiptRef.current.classList.contains(
-              "bg-[#181818]"
-            )
-              ? "#181818"
-              : "#ffffff",
-            ignoreElements: (el) => {
-              return (
-                el.classList?.contains("hover-card") ||
-                el.classList?.contains("tooltip") ||
-                el.classList?.contains("dropdown-menu")
-              );
-            },
-          });
-
-          // Convert canvas to blob
-          const blob = await new Promise<Blob>((resolve) => {
-            canvas.toBlob((blob) => resolve(blob!), "image/png", 1);
-          });
-
-          const file = new File([blob], "spotify-receipt.png", {
-            type: "image/png",
-          });
-
-          // Use Web Share API if available
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "My Spotify Receiptify",
-              text: "Check out my Spotify stats!",
-            });
-          } else {
-            // Fallback: Create downloadable link
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "spotify-receipt.png";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            toast.success("Image downloaded successfully!", {
-              duration: 3000,
-              position: "top-center",
-            });
-          }
-
-          toast.dismiss(toastId);
-        } catch (error) {
-          console.error("Error generating image:", error);
-          toast.dismiss(toastId);
-          toast.error(
-            "Failed to generate image. Please try saving it instead.",
-            {
-              duration: 4000,
-              position: "top-center",
-            }
-          );
-        }
-      } else {
-        // For desktop: Show instruction toast
-        toast("Instagram story sharing is only available on mobile devices", {
-          duration: 3000,
-          position: "top-center",
-          icon: "ℹ️",
+      if (
+        isMobile &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        // Use Web Share API for mobile devices
+        await navigator.share({
+          files: [file],
+          title: "My Spotify Receiptify",
+          text: "Check out my Spotify stats!",
         });
-
-        // Fallback to regular sharing on desktop
-        if (navigator.share) {
-          await navigator.share({
-            title: "My Spotify Receiptify",
-            text: "Check out my Spotify stats!",
-            url: window.location.href,
-          });
-        } else {
-          await navigator.clipboard.writeText(window.location.href);
-          toast.success("Link copied to clipboard!", {
-            duration: 2000,
-            position: "top-center",
-          });
-        }
+        toast.success("Shared successfully!");
+      } else {
+        // Fallback to direct download
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "spotify-receipt.jpg";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success("Image downloaded successfully!");
       }
     } catch (error) {
-      console.error("Error sharing:", error);
-      toast.error("Failed to share. Please try again.", {
-        duration: 3000,
-        position: "top-center",
-      });
+      console.error("Error in share process:", error);
+      toast.error(
+        "Failed to share. Please try again or take a screenshot instead."
+      );
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 
