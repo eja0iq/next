@@ -797,10 +797,7 @@ export default function SpotifyReceiptify() {
                             {track.album?.images ? (
                               <>
                                 <img
-                                  src={
-                                    track.album.images[2]?.url ||
-                                    track.album.images[0].url
-                                  }
+                                  src={track.album.images[2]?.url}
                                   alt={track.name}
                                   className="w-full h-full object-cover"
                                   loading="lazy"
@@ -861,11 +858,11 @@ export default function SpotifyReceiptify() {
                           followers
                         </div>
                       </div>
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center border-8 border-[#1e1e1e]">
+                      <div className="relative w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center border-8 border-[#1e1e1e]">
                         {topArtists[0].images ? (
                           <img
                             src={
-                              topArtists[0].images[1]?.url ||
+                              topArtists[0].images[2]?.url ||
                               topArtists[0].images[0].url
                             }
                             alt={topArtists[0].name}
@@ -914,9 +911,7 @@ export default function SpotifyReceiptify() {
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#282828] flex items-center justify-center rounded-md overflow-hidden group-hover:bg-[#1DB954] transition-colors duration-300">
                           {artist.images ? (
                             <img
-                              src={
-                                artist.images[2]?.url || artist.images[0].url
-                              }
+                              src={artist.images[2]?.url}
                               alt={artist.name}
                               className="w-full h-full object-cover"
                               loading="lazy"
