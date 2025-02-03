@@ -381,41 +381,70 @@ export default function SpotifyReceiptify() {
   const downloadAsImage = async () => {
     if (receiptRef.current) {
       try {
-        // Store original styles
-        const originalWidth = receiptRef.current.style.width;
-        const originalHeight = receiptRef.current.style.height;
+        // Store original dimensions
+        const originalStyles = {
+          width: receiptRef.current.style.width,
+          height: receiptRef.current.style.height,
+          transform: receiptRef.current.style.transform,
+        };
 
         // Set fixed width
         receiptRef.current.style.width = "758px";
 
-        // Calculate height based on metric type and number of items
-        let height;
-        if (
-          customization.tracks === 10 &&
-          customization.metric !== "top_genres"
-        ) {
-          height = "1384px"; // Original height for 10 tracks/artists
+        // Calculate height based on content
+        let height = 1384; // Default height for 10 tracks/artists
+
+        if (customization.metric === "top_genres") {
+          height = 800; // Shorter height for genres view
+        } else if (customization.metric === "stats") {
+          height = 1200; // Adjusted height for stats view
+        } else if (customization.tracks < 10) {
+          // Reduce height proportionally for fewer tracks
+          height = Math.max(
+            800,
+            Math.round(1384 * (customization.tracks / 10))
+          );
         }
 
-        // Generate the image with calculated dimensions
+        // Set temporary styles for capture
+        receiptRef.current.style.height = `${height}px`;
+        receiptRef.current.style.transform = "none";
+
+        // Generate the image
         const dataUrl = await domtoimage.toPng(receiptRef.current, {
           width: 758,
-          height: parseInt(originalHeight),
+          height: height,
           style: {
-            transform: "scale(1)",
+            transform: "none",
             transformOrigin: "top left",
+            maxWidth: "none",
+            maxHeight: "none",
           },
         });
 
         // Restore original styles
-        receiptRef.current.style.width = originalWidth;
-        receiptRef.current.style.height = originalHeight;
+        receiptRef.current.style.width = originalStyles.width;
+        receiptRef.current.style.height = originalStyles.height;
+        receiptRef.current.style.transform = originalStyles.transform;
 
-        // Create and click download link
-        const link = document.createElement("a");
-        link.download = "spotify-receipt.png";
-        link.href = dataUrl;
-        link.click();
+        // For mobile devices, create a blob and use it
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = "spotify-receipt.png";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        } else {
+          // Desktop download
+          const link = document.createElement("a");
+          link.download = "spotify-receipt.png";
+          link.href = dataUrl;
+          link.click();
+        }
       } catch (error) {
         console.error("Error generating image:", error);
       }
