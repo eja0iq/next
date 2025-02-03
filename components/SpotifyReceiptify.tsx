@@ -250,9 +250,14 @@ export default function SpotifyReceiptify() {
         height: ${element.offsetHeight}px;
       `;
 
-      // Use html2canvas with optimized settings
+      // Check if running on iOS Safari
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+        !/Windows Phone/.test(navigator.userAgent);
+
+      // Use html2canvas with iOS-optimized settings
       const canvas = await html2canvas(element, {
-        scale: 1, // Lower scale for better performance
+        scale: isIOS ? 1 : 2, // Reduced scale for iOS
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -271,20 +276,48 @@ export default function SpotifyReceiptify() {
           elm.style.transform = "none";
           elm.style.borderRadius = "0";
         },
+        imageTimeout: 0, // No timeout for image loading
+        removeContainer: true, // Clean up temporary elements
+        foreignObjectRendering: false, // Disable foreignObject for better iOS compatibility
+        scrollY: -window.scrollY, // Fix iOS scroll position issues
+        width: element.offsetWidth,
+        height: element.offsetHeight,
       });
+
+      // Force garbage collection for iOS
+      if (isIOS) {
+        window.setTimeout(() => {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+          canvas.width = 0;
+          canvas.height = 0;
+        }, 500);
+      }
 
       // Restore original styles
       element.style.cssText = originalStyles;
 
-      // Convert to blob with lower quality for better performance
+      // Optimize image format and quality based on device
       const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.8);
+        if (isIOS) {
+          // Use PNG with max quality for iOS to prevent image corruption
+          canvas.toBlob((blob) => resolve(blob!), "image/png", 1.0);
+        } else {
+          // Use JPEG with lower quality for other devices
+          canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.8);
+        }
       });
 
-      // Create file for sharing
-      const file = new File([blob], "spotify-receipt.jpg", {
-        type: "image/jpeg",
-      });
+      // Create file for sharing with correct format
+      const file = new File(
+        [blob],
+        `spotify-receipt.${isIOS ? "png" : "jpg"}`,
+        {
+          type: isIOS ? "image/png" : "image/jpeg",
+        }
+      );
 
       // Check if running on mobile device
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -427,9 +460,14 @@ export default function SpotifyReceiptify() {
         height: ${element.offsetHeight}px;
       `;
 
-      // Use html2canvas with optimized settings
+      // Check if running on iOS Safari
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+        !/Windows Phone/.test(navigator.userAgent);
+
+      // Use html2canvas with iOS-optimized settings
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: isIOS ? 1 : 2, // Reduced scale for iOS
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -443,7 +481,25 @@ export default function SpotifyReceiptify() {
             el.classList?.contains("dropdown-menu")
           );
         },
+        imageTimeout: 0, // No timeout for image loading
+        removeContainer: true, // Clean up temporary elements
+        foreignObjectRendering: false, // Disable foreignObject for better iOS compatibility
+        scrollY: -window.scrollY, // Fix iOS scroll position issues
+        width: element.offsetWidth,
+        height: element.offsetHeight,
       });
+
+      // Force garbage collection for iOS
+      if (isIOS) {
+        window.setTimeout(() => {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+          canvas.width = 0;
+          canvas.height = 0;
+        }, 500);
+      }
 
       // Restore original styles
       element.style.cssText = originalStyles;
