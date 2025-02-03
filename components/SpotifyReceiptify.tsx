@@ -239,23 +239,73 @@ export default function SpotifyReceiptify() {
           throw new Error("Receipt element not found");
         }
 
-        // Generate the image as a Blob
-        const blob = await domtoimage.toBlob(receiptRef.current);
-        const file = new File([blob], "spotify-receipt.png", {
-          type: "image/png",
-        });
+        // Create a clone of the receipt element
+        const clone = receiptRef.current.cloneNode(true) as HTMLElement;
+        document.body.appendChild(clone);
 
-        // Use Web Share API if available
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "My Spotify Receiptify",
-            text: "Check out my Spotify stats!",
+        // Apply necessary styles for iOS
+        clone.style.width = `${receiptRef.current.offsetWidth}px`;
+        clone.style.height = `${receiptRef.current.offsetHeight}px`;
+        clone.style.transform = "none";
+        clone.style.borderRadius = "0";
+
+        // Set background color explicitly
+        const darkMode = clone.classList.contains("bg-[#181818]");
+        clone.style.backgroundColor = darkMode ? "#181818" : "#ffffff";
+
+        // Configure dom-to-image options
+        const options = {
+          quality: 1,
+          height: clone.offsetHeight,
+          width: clone.offsetWidth,
+          scale: 2,
+          style: {
+            transform: "none",
+            "-webkit-transform": "none",
+            "-ms-transform": "none",
+          },
+          imagePlaceholder:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        };
+
+        try {
+          // Generate the image as a Blob with optimized settings
+          const blob = await domtoimage.toBlob(clone, options);
+
+          // Clean up the clone
+          document.body.removeChild(clone);
+
+          const file = new File([blob], "spotify-receipt.png", {
+            type: "image/png",
           });
-        } else {
-          // Fallback: Inform the user about the limitation
+
+          // Use Web Share API if available
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "My Spotify Receiptify",
+              text: "Check out my Spotify stats!",
+            });
+          } else {
+            // Fallback: Create downloadable link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "spotify-receipt.png";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast.success("Image downloaded successfully!", {
+              duration: 3000,
+              position: "top-center",
+            });
+          }
+        } catch (error) {
+          console.error("Error generating image:", error);
           toast.error(
-            "Sharing to Instagram Stories directly is not supported on this device. Please download the image and share it manually.",
+            "Failed to generate image. Please try saving it instead.",
             {
               duration: 4000,
               position: "top-center",
@@ -384,13 +434,41 @@ export default function SpotifyReceiptify() {
     try {
       toast.loading("Generating image...", { duration: 5000 });
 
-      const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        quality: 1,
-        height: receiptRef.current.offsetHeight,
-        width: receiptRef.current.offsetWidth,
-        style: { transform: "none" },
-      });
+      // Create a clone of the receipt element to avoid modifying the original
+      const clone = receiptRef.current.cloneNode(true) as HTMLElement;
+      document.body.appendChild(clone);
 
+      // Apply necessary styles for iOS
+      clone.style.width = `${receiptRef.current.offsetWidth}px`;
+      clone.style.height = `${receiptRef.current.offsetHeight}px`;
+      clone.style.transform = "none";
+      clone.style.borderRadius = "0"; // Remove border radius for better image quality
+
+      // Set background color explicitly
+      const darkMode = clone.classList.contains("bg-[#181818]");
+      clone.style.backgroundColor = darkMode ? "#181818" : "#ffffff";
+
+      // Configure dom-to-image options for better iOS compatibility
+      const options = {
+        quality: 1,
+        height: clone.offsetHeight,
+        width: clone.offsetWidth,
+        scale: 2, // Increase resolution
+        style: {
+          transform: "none",
+          "-webkit-transform": "none",
+          "-ms-transform": "none",
+        },
+        imagePlaceholder:
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      };
+
+      const dataUrl = await domtoimage.toPng(clone, options);
+
+      // Clean up the clone
+      document.body.removeChild(clone);
+
+      // Create and trigger download
       const link = document.createElement("a");
       link.href = dataUrl;
       link.download = "spotify-receipt.png";
