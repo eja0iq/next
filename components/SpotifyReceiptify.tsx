@@ -391,20 +391,10 @@ export default function SpotifyReceiptify() {
         // Set fixed width
         receiptRef.current.style.width = "758px";
 
-        // Calculate height based on content
-        let height = 1384; // Default height for 10 tracks/artists
+        let height = receiptRef.current.offsetHeight;
 
-        if (customization.metric === "top_genres") {
-          height = 800; // Shorter height for genres view
-        } else if (customization.metric === "stats") {
-          height = 1200; // Adjusted height for stats view
-        } else if (customization.tracks < 10) {
-          // Reduce height proportionally for fewer tracks
-          height = Math.max(
-            800,
-            Math.round(1384 * (customization.tracks / 10))
-          );
-        }
+        // Ensure minimum height
+        height = Math.max(800, height);
 
         // Set temporary styles for capture
         receiptRef.current.style.height = `${height}px`;
@@ -427,8 +417,18 @@ export default function SpotifyReceiptify() {
         receiptRef.current.style.height = originalStyles.height;
         receiptRef.current.style.transform = originalStyles.transform;
 
-        // For mobile devices, create a blob and use it
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Check if iOS device
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        if (isIOS) {
+          // For iOS, open image in new tab
+          window.open(dataUrl, "_blank");
+          toast.success("Long press the image to save", {
+            duration: 5000,
+            position: "top-center",
+          });
+        } else if (/Android/i.test(navigator.userAgent)) {
+          // For Android devices
           const blob = await (await fetch(dataUrl)).blob();
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
