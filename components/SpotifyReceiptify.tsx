@@ -379,75 +379,94 @@ export default function SpotifyReceiptify() {
   };
 
   const downloadAsImage = async () => {
-    if (receiptRef.current) {
-      try {
-        // Store original dimensions
-        const originalStyles = {
-          width: receiptRef.current.style.width,
-          height: receiptRef.current.style.height,
-          transform: receiptRef.current.style.transform,
-        };
+    if (!receiptRef.current) return;
 
-        // Set fixed width
-        receiptRef.current.style.width = "758px";
+    try {
+      // Store original dimensions
+      const originalStyles = {
+        width: receiptRef.current.style.width,
+        height: receiptRef.current.style.height,
+        transform: receiptRef.current.style.transform,
+      };
 
-        let height = receiptRef.current.offsetHeight;
+      // Set fixed width
+      receiptRef.current.style.width = "758px";
+      let height = Math.max(800, receiptRef.current.offsetHeight);
+      receiptRef.current.style.height = `${height}px`;
+      receiptRef.current.style.transform = "none";
 
-        // Ensure minimum height
-        height = Math.max(800, height);
+      // Generate the image
+      const dataUrl = await domtoimage.toPng(receiptRef.current, {
+        width: 758,
+        height: height,
+        style: {
+          transform: "none",
+          transformOrigin: "top left",
+          maxWidth: "none",
+          maxHeight: "none",
+        },
+      });
 
-        // Set temporary styles for capture
-        receiptRef.current.style.height = `${height}px`;
-        receiptRef.current.style.transform = "none";
+      // Restore original styles
+      receiptRef.current.style.width = originalStyles.width;
+      receiptRef.current.style.height = originalStyles.height;
+      receiptRef.current.style.transform = originalStyles.transform;
 
-        // Generate the image
-        const dataUrl = await domtoimage.toPng(receiptRef.current, {
-          width: 758,
-          height: height,
-          style: {
-            transform: "none",
-            transformOrigin: "top left",
-            maxWidth: "none",
-            maxHeight: "none",
-          },
+      // Check device type
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+
+      if (isIOS) {
+        // For iOS, create a temporary download link
+        const blob = await (await fetch(dataUrl)).blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = "spotify-receipt.png";
+        document.body.appendChild(link);
+
+        // Trigger download
+        const clickEvent = new MouseEvent("click", {
+          view: window,
+          bubbles: true,
+          cancelable: false,
         });
+        link.dispatchEvent(clickEvent);
 
-        // Restore original styles
-        receiptRef.current.style.width = originalStyles.width;
-        receiptRef.current.style.height = originalStyles.height;
-        receiptRef.current.style.transform = originalStyles.transform;
-
-        // Check if iOS device
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-        if (isIOS) {
-          // For iOS, open image in new tab
-          window.open(dataUrl, "_blank");
-          toast.success("Long press the image to save", {
-            duration: 5000,
-            position: "top-center",
-          });
-        } else if (/Android/i.test(navigator.userAgent)) {
-          // For Android devices
-          const blob = await (await fetch(dataUrl)).blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = blobUrl;
-          link.download = "spotify-receipt.png";
-          document.body.appendChild(link);
-          link.click();
+        // Cleanup
+        setTimeout(() => {
           document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
-        } else {
-          // Desktop download
-          const link = document.createElement("a");
-          link.download = "spotify-receipt.png";
-          link.href = dataUrl;
-          link.click();
-        }
-      } catch (error) {
-        console.error("Error generating image:", error);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+        toast.success("Image download started", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } else if (isAndroid) {
+        // For Android devices
+        const blob = await (await fetch(dataUrl)).blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = "spotify-receipt.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        // Desktop download
+        const link = document.createElement("a");
+        link.download = "spotify-receipt.png";
+        link.href = dataUrl;
+        link.click();
       }
+    } catch (error) {
+      console.error("Error generating image:", error);
+      toast.error("Failed to download image. Please try again.", {
+        duration: 3000,
+        position: "top-center",
+      });
     }
   };
 
