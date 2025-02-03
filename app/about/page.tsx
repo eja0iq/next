@@ -51,7 +51,7 @@ export default function AboutPage() {
                 Created by music lovers for music lovers, Receiptify+ started as
                 a passion project to give Spotify users a unique way to
                 visualize and share their music preferences. We believe that
-                music taste tells a story, and we're here to help you tell
+                music taste tells a story, and we&apos;re here to help you tell
                 yours.
               </p>
             </div>
