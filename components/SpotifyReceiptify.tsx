@@ -382,15 +382,24 @@ export default function SpotifyReceiptify() {
     if (!receiptRef.current) return;
 
     try {
-      // Get device type
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/i.test(navigator.userAgent);
 
-      // Generate the image without modifying dimensions
-      const dataUrl = await domtoimage.toPng(receiptRef.current);
+      // Capture current scroll position
+      const scrollY = window.scrollY;
+
+      // Generate image
+      const dataUrl = await domtoimage.toPng(receiptRef.current, {
+        quality: 1,
+        height: receiptRef.current.offsetHeight,
+        width: receiptRef.current.offsetWidth,
+        style: {
+          transform: "none",
+        },
+      });
 
       if (isIOS) {
-        // Try using the Share API first
+        // For iOS, try using the Share API first
         try {
           const blob = await (await fetch(dataUrl)).blob();
           const file = new File([blob], "spotify-receipt.png", {
@@ -408,7 +417,7 @@ export default function SpotifyReceiptify() {
           console.error("Share failed:", shareError);
         }
 
-        // If Share API fails or isn't available, open in new window for saving
+        // If Share API fails or isn't available, open in new window
         const win = window.open();
         if (win) {
           win.document.write(`
@@ -417,10 +426,10 @@ export default function SpotifyReceiptify() {
                 <title>Save your Spotify Receipt</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
               </head>
-              <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000;">
+              <body style="margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #000; color: white; font-family: system-ui;">
                 <img src="${dataUrl}" style="max-width: 100%; height: auto;">
-                <p style="position: fixed; bottom: 20px; color: white; font-family: system-ui; text-align: center; width: 100%; padding: 0 20px;">
-                  Press and hold the image to save
+                <p style="position: fixed; bottom: 20px; text-align: center; width: 100%; padding: 0 20px;">
+                  Press and hold the image, then tap "Save Image"
                 </p>
               </body>
             </html>
@@ -428,7 +437,7 @@ export default function SpotifyReceiptify() {
           win.document.close();
         }
 
-        toast.success("Press and hold the image to save", {
+        toast.success("Image opened in new tab. Press and hold to save.", {
           duration: 5000,
           position: "top-center",
         });
@@ -443,13 +452,26 @@ export default function SpotifyReceiptify() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(blobUrl);
+
+        toast.success("Image downloaded", {
+          duration: 3000,
+          position: "top-center",
+        });
       } else {
         // Desktop download
         const link = document.createElement("a");
         link.download = "spotify-receipt.png";
         link.href = dataUrl;
         link.click();
+
+        toast.success("Image downloaded", {
+          duration: 3000,
+          position: "top-center",
+        });
       }
+
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
     } catch (error) {
       console.error("Error generating image:", error);
       toast.error("Failed to generate image. Please try again.", {
