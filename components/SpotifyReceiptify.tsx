@@ -231,16 +231,41 @@ export default function SpotifyReceiptify() {
 
   const handleShare = async () => {
     try {
+      if (!receiptRef.current) return;
+
       // Check if running on mobile device
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      if (isMobile) {
-        if (!receiptRef.current) {
-          throw new Error("Receipt element not found");
-        }
+      // Store original styles
+      const originalWidth = receiptRef.current.style.width;
+      const originalHeight = receiptRef.current.style.height;
 
-        // Generate the image as a Blob
-        const blob = await domtoimage.toBlob(receiptRef.current);
+      // Set fixed width for Instagram story dimensions
+      receiptRef.current.style.width = "758px";
+
+      // Calculate height based on metric type and number of items
+      if (customization.tracks === 10 && customization.metric === "top_tracks") {
+        receiptRef.current.style.height = "1384px";
+      }
+
+      // Generate the image
+      const dataUrl = await domtoimage.toPng(receiptRef.current, {
+        width: 758,
+        height: customization.tracks === 10 && customization.metric === "top_tracks" ? 1384 : undefined,
+        style: {
+          transform: "scale(1)",
+          transformOrigin: "top left",
+        },
+      });
+
+      // Restore original styles
+      receiptRef.current.style.width = originalWidth;
+      receiptRef.current.style.height = originalHeight;
+
+      if (isMobile) {
+        // Convert data URL to Blob for sharing
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
         const file = new File([blob], "spotify-receipt.png", {
           type: "image/png",
         });
@@ -274,14 +299,12 @@ export default function SpotifyReceiptify() {
           });
         } else {
           // Fallback to download on mobile
-          const url = URL.createObjectURL(blob);
           const link = document.createElement("a");
-          link.href = url;
+          link.href = dataUrl;
           link.download = "spotify-receipt.png";
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          URL.revokeObjectURL(url);
           toast.success("Image downloaded successfully!", {
             duration: 3000,
             position: "top-center",
@@ -289,8 +312,6 @@ export default function SpotifyReceiptify() {
         }
       } else {
         // For desktop: download directly
-        if (!receiptRef.current) return;
-        const dataUrl = await domtoimage.toPng(receiptRef.current);
         const link = document.createElement("a");
         link.download = "spotify-receipt.png";
         link.href = dataUrl;
@@ -394,20 +415,47 @@ export default function SpotifyReceiptify() {
   };
 
   const downloadAsImage = async () => {
-    if (!receiptRef.current) return;
-
     const toastId = toast.loading("Preparing receipt...");
 
     try {
+      if (!receiptRef.current) return;
+
       toast.loading("Generating image...", { id: toastId });
 
+      // Store original styles
+      const originalWidth = receiptRef.current.style.width;
+      const originalHeight = receiptRef.current.style.height;
+
+      // Set fixed width for Instagram story dimensions
+      receiptRef.current.style.width = "758px";
+
+      // Calculate height based on metric type and number of items
+      let height;
+      if (
+        customization.tracks === 10 &&
+        customization.metric === "top_tracks"
+      ) {
+        height = "1384px"; // Height for Instagram story dimensions
+        receiptRef.current.style.height = height;
+      }
+
+      // Generate the image with calculated dimensions
       const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        quality: 0.95,
-        bgcolor: receiptRef.current.classList.contains("bg-[#181818]") ? "#181818" : "#ffffff",
+        width: 758,
+        height: height ? parseInt(height) : undefined,
+        style: {
+          transform: "scale(1)",
+          transformOrigin: "top left",
+        },
       });
+
+      // Restore original styles
+      receiptRef.current.style.width = originalWidth;
+      receiptRef.current.style.height = originalHeight;
 
       toast.loading("Processing download...", { id: toastId });
 
+      // Create and click download link
       const link = document.createElement("a");
       link.download = "spotify-receipt.png";
       link.href = dataUrl;
