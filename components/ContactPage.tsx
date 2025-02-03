@@ -26,8 +26,8 @@ export default function ContactPage() {
                 Get in Touch with Receiptify+
               </p>
               <p className="text-sm text-[#b3b3b3]">
-                Have questions, suggestions, or just want to say hello? We'd
-                love to hear from you!
+                Have questions, suggestions, or just want to say hello?
+                We&apos;d love to hear from you!
               </p>
             </div>
 

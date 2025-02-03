@@ -83,11 +83,11 @@ export default function PrivacyPolicyPage() {
                 Introduction
               </h2>
               <p className="text-[#b3b3b3] leading-relaxed">
-                Welcome to Receiptify+'s Privacy Policy. We've created this
-                policy to demonstrate our commitment to protecting your privacy
-                and handling your data with care. This document explains how we
-                collect, use, and safeguard your information when you use our
-                service.
+                Welcome to Receiptify+&apos;s Privacy Policy. We&apos;ve created
+                this policy to demonstrate our commitment to protecting your
+                privacy and handling your data with care. This document explains
+                how we collect, use, and safeguard your information when you use
+                our service.
               </p>
             </div>
 
@@ -123,10 +123,11 @@ export default function PrivacyPolicyPage() {
                 Third-Party Services
               </h2>
               <p className="text-[#b3b3b3] leading-relaxed">
-                We use Spotify's API services to access your music data. Your
-                use of Receiptify+ is also subject to Spotify's Privacy Policy
-                and Terms of Service. We ensure that any third-party services we
-                use maintain the same high standards of data protection.
+                We use Spotify&apos;s API services to access your music data.
+                Your use of Receiptify+ is also subject to Spotify&apos;s
+                Privacy Policy and Terms of Service. We ensure that any
+                third-party services we use maintain the same high standards of
+                data protection.
               </p>
             </div>
 
