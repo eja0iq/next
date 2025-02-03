@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import CustomizationPanel from "./CustomizationPanel";
 import LoginPage from "./LoginPage";
-import domtoimage from "dom-to-image";
+import html2canvas from "html2canvas";
 import {
   getUserProfile,
   getTopTracks,
@@ -239,41 +239,33 @@ export default function SpotifyReceiptify() {
           throw new Error("Receipt element not found");
         }
 
-        // Create a clone of the receipt element
-        const clone = receiptRef.current.cloneNode(true) as HTMLElement;
-        document.body.appendChild(clone);
-
-        // Apply necessary styles for iOS
-        clone.style.width = `${receiptRef.current.offsetWidth}px`;
-        clone.style.height = `${receiptRef.current.offsetHeight}px`;
-        clone.style.transform = "none";
-        clone.style.borderRadius = "0";
-
-        // Set background color explicitly
-        const darkMode = clone.classList.contains("bg-[#181818]");
-        clone.style.backgroundColor = darkMode ? "#181818" : "#ffffff";
-
-        // Configure dom-to-image options
-        const options = {
-          quality: 1,
-          height: clone.offsetHeight,
-          width: clone.offsetWidth,
-          scale: 2,
-          style: {
-            transform: "none",
-            "-webkit-transform": "none",
-            "-ms-transform": "none",
-          },
-          imagePlaceholder:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        };
+        const toastId = toast.loading("Preparing image...");
 
         try {
-          // Generate the image as a Blob with optimized settings
-          const blob = await domtoimage.toBlob(clone, options);
+          // Use html2canvas to generate the image
+          const canvas = await html2canvas(receiptRef.current, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: receiptRef.current.classList.contains(
+              "bg-[#181818]"
+            )
+              ? "#181818"
+              : "#ffffff",
+            ignoreElements: (el) => {
+              return (
+                el.classList?.contains("hover-card") ||
+                el.classList?.contains("tooltip") ||
+                el.classList?.contains("dropdown-menu")
+              );
+            },
+          });
 
-          // Clean up the clone
-          document.body.removeChild(clone);
+          // Convert canvas to blob
+          const blob = await new Promise<Blob>((resolve) => {
+            canvas.toBlob((blob) => resolve(blob!), "image/png", 1);
+          });
 
           const file = new File([blob], "spotify-receipt.png", {
             type: "image/png",
@@ -302,8 +294,11 @@ export default function SpotifyReceiptify() {
               position: "top-center",
             });
           }
+
+          toast.dismiss(toastId);
         } catch (error) {
           console.error("Error generating image:", error);
+          toast.dismiss(toastId);
           toast.error(
             "Failed to generate image. Please try saving it instead.",
             {
@@ -431,108 +426,76 @@ export default function SpotifyReceiptify() {
   const downloadAsImage = async () => {
     if (!receiptRef.current) return;
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const toastId = toast.loading("Preparing receipt...");
 
     try {
-      toast.loading("Processing...", { id: toastId });
+      toast.loading("Generating image...", { id: toastId });
 
-      // Basic configuration for image generation
-      const options = {
-        bgcolor: receiptRef.current.classList.contains("bg-[#181818]")
+      // Optimize the element for capture
+      const element = receiptRef.current;
+      const originalStyles = element.style.cssText;
+      element.style.cssText = `
+        ${originalStyles}
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: ${element.offsetWidth}px;
+        height: ${element.offsetHeight}px;
+      `;
+
+      // Use html2canvas with optimized settings
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: element.classList.contains("bg-[#181818]")
           ? "#181818"
           : "#ffffff",
-        filter: (node: Node) => {
-          if (node.nodeType !== Node.ELEMENT_NODE) return true;
-          const element = node as Element;
-          if (!element.classList) return true;
-          return !["hover-card", "tooltip", "dropdown-menu"].some((cls) =>
-            element.classList.contains(cls)
+        ignoreElements: (el) => {
+          return (
+            el.classList?.contains("hover-card") ||
+            el.classList?.contains("tooltip") ||
+            el.classList?.contains("dropdown-menu")
           );
         },
-        style: {
-          transform: "none",
-        },
-      };
+      });
 
-      // Generate image
-      let dataUrl: string;
-      try {
-        if (isIOS) {
-          // iOS: Use simpler approach first
-          toast.loading("Generating image for iOS...", { id: toastId });
-          dataUrl = await domtoimage.toPng(receiptRef.current, options);
-        } else {
-          // Non-iOS: Can use timeout and more features
-          toast.loading("Generating image...", { id: toastId });
-          const timeoutPromise = new Promise<string>((_, reject) => {
-            setTimeout(
-              () => reject(new Error("Image generation timed out")),
-              15000
-            );
-          });
-          dataUrl = await Promise.race([
-            domtoimage.toPng(receiptRef.current, options),
-            timeoutPromise,
-          ]);
-        }
+      // Restore original styles
+      element.style.cssText = originalStyles;
 
-        // Process the generated image
-        toast.loading("Finalizing...", { id: toastId });
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+      toast.loading("Processing image...", { id: toastId });
 
-        // Download the image
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "spotify-receipt.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), "image/png", 1);
+      });
 
-        toast.dismiss(toastId);
-        toast.success("Image downloaded successfully!");
-      } catch (genError) {
-        console.error("Initial attempt failed:", genError);
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "spotify-receipt.png";
 
-        if (isIOS) {
-          // iOS fallback with minimal options
-          toast.loading("Trying alternative method...", { id: toastId });
-          dataUrl = await domtoimage.toPng(receiptRef.current, {
-            bgcolor: "#181818",
-          });
+      toast.loading("Downloading...", { id: toastId });
 
-          const blob = await (await fetch(dataUrl)).blob();
-          const url = URL.createObjectURL(blob);
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = "spotify-receipt.png";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+      // Clean up
+      URL.revokeObjectURL(url);
 
-          toast.dismiss(toastId);
-          toast.success("Image downloaded successfully!");
-        } else {
-          throw genError; // Re-throw for non-iOS devices
-        }
-      }
+      toast.dismiss(toastId);
+      toast.success("Image downloaded successfully!");
     } catch (error) {
       console.error("Error generating image:", error);
       toast.dismiss(toastId);
-
-      const errorMessage =
-        error instanceof Error && error.message === "Image generation timed out"
-          ? "Generation is taking too long. Try closing other apps and refreshing the page."
-          : isIOS
-          ? "Having trouble on iOS? Try taking a screenshot instead."
-          : "Failed to generate image. Please try again.";
-
-      toast.error(errorMessage, { duration: 5000 });
+      toast.error(
+        "Failed to generate image. Please try again or take a screenshot instead.",
+        { duration: 5000 }
+      );
     }
   };
 
