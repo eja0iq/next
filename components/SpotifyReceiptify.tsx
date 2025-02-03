@@ -382,65 +382,54 @@ export default function SpotifyReceiptify() {
     if (!receiptRef.current) return;
 
     try {
-      // Store original dimensions
-      const originalStyles = {
-        width: receiptRef.current.style.width,
-        height: receiptRef.current.style.height,
-        transform: receiptRef.current.style.transform,
-      };
-
-      // Set fixed width
-      receiptRef.current.style.width = "758px";
-      let height = Math.max(800, receiptRef.current.offsetHeight);
-      receiptRef.current.style.height = `${height}px`;
-      receiptRef.current.style.transform = "none";
-
-      // Generate the image
-      const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        width: 758,
-        height: height,
-        style: {
-          transform: "none",
-          transformOrigin: "top left",
-          maxWidth: "none",
-          maxHeight: "none",
-        },
-      });
-
-      // Restore original styles
-      receiptRef.current.style.width = originalStyles.width;
-      receiptRef.current.style.height = originalStyles.height;
-      receiptRef.current.style.transform = originalStyles.transform;
-
-      // Check device type
+      // Get device type
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/i.test(navigator.userAgent);
 
+      // Generate the image without modifying dimensions
+      const dataUrl = await domtoimage.toPng(receiptRef.current);
+
       if (isIOS) {
-        // For iOS, create a temporary download link
-        const blob = await (await fetch(dataUrl)).blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = "spotify-receipt.png";
-        document.body.appendChild(link);
+        // Try using the Share API first
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], "spotify-receipt.png", {
+            type: "image/png",
+          });
 
-        // Trigger download
-        const clickEvent = new MouseEvent("click", {
-          view: window,
-          bubbles: true,
-          cancelable: false,
-        });
-        link.dispatchEvent(clickEvent);
+          if (navigator.share && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Spotify Receipt",
+            });
+            return;
+          }
+        } catch (shareError) {
+          console.error("Share failed:", shareError);
+        }
 
-        // Cleanup
-        setTimeout(() => {
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(blobUrl);
-        }, 100);
+        // If Share API fails or isn't available, open in new window for saving
+        const win = window.open();
+        if (win) {
+          win.document.write(`
+            <html>
+              <head>
+                <title>Save your Spotify Receipt</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              </head>
+              <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000;">
+                <img src="${dataUrl}" style="max-width: 100%; height: auto;">
+                <p style="position: fixed; bottom: 20px; color: white; font-family: system-ui; text-align: center; width: 100%; padding: 0 20px;">
+                  Press and hold the image to save
+                </p>
+              </body>
+            </html>
+          `);
+          win.document.close();
+        }
 
-        toast.success("Image download started", {
-          duration: 3000,
+        toast.success("Press and hold the image to save", {
+          duration: 5000,
           position: "top-center",
         });
       } else if (isAndroid) {
@@ -463,7 +452,7 @@ export default function SpotifyReceiptify() {
       }
     } catch (error) {
       console.error("Error generating image:", error);
-      toast.error("Failed to download image. Please try again.", {
+      toast.error("Failed to generate image. Please try again.", {
         duration: 3000,
         position: "top-center",
       });
