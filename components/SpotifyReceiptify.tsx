@@ -382,101 +382,29 @@ export default function SpotifyReceiptify() {
     if (!receiptRef.current) return;
 
     try {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isAndroid = /Android/i.test(navigator.userAgent);
+      toast.loading("Generating image...", { duration: 5000 });
 
-      // Capture current scroll position
-      const scrollY = window.scrollY;
-
-      // Generate image
       const dataUrl = await domtoimage.toPng(receiptRef.current, {
         quality: 1,
         height: receiptRef.current.offsetHeight,
         width: receiptRef.current.offsetWidth,
-        style: {
-          transform: "none",
-        },
+        style: { transform: "none" },
       });
 
-      if (isIOS) {
-        // For iOS, try using the Share API first
-        try {
-          const blob = await (await fetch(dataUrl)).blob();
-          const file = new File([blob], "spotify-receipt.png", {
-            type: "image/png",
-          });
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = "spotify-receipt.png";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-          if (navigator.share && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "Spotify Receipt",
-            });
-            return;
-          }
-        } catch (shareError) {
-          console.error("Share failed:", shareError);
-        }
-
-        // If Share API fails or isn't available, open in new window
-        const win = window.open();
-        if (win) {
-          win.document.write(`
-            <html>
-              <head>
-                <title>Save your Spotify Receipt</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #000; color: white; font-family: system-ui;">
-                <img src="${dataUrl}" style="max-width: 100%; height: auto;">
-                <p style="position: fixed; bottom: 20px; text-align: center; width: 100%; padding: 0 20px;">
-                  Press and hold the image, then tap "Save Image"
-                </p>
-              </body>
-            </html>
-          `);
-          win.document.close();
-        }
-
-        toast.success("Image opened in new tab. Press and hold to save.", {
-          duration: 5000,
-          position: "top-center",
-        });
-      } else if (isAndroid) {
-        // For Android devices
-        const blob = await (await fetch(dataUrl)).blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = "spotify-receipt.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-
-        toast.success("Image downloaded", {
-          duration: 3000,
-          position: "top-center",
-        });
-      } else {
-        // Desktop download
-        const link = document.createElement("a");
-        link.download = "spotify-receipt.png";
-        link.href = dataUrl;
-        link.click();
-
-        toast.success("Image downloaded", {
-          duration: 3000,
-          position: "top-center",
-        });
-      }
-
-      // Restore scroll position
-      window.scrollTo(0, scrollY);
+      toast.dismiss();
+      toast.success("Image downloaded successfully!", { duration: 3000 });
     } catch (error) {
       console.error("Error generating image:", error);
+      toast.dismiss();
       toast.error("Failed to generate image. Please try again.", {
         duration: 3000,
-        position: "top-center",
       });
     }
   };
