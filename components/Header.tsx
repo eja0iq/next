@@ -27,22 +27,22 @@ export default function Header() {
   const menuItems = [
     {
       label: "Home",
-      href: "#",
+      href: "/",
       icon: <Home className="h-4 w-4" />,
     },
     {
       label: "About",
-      href: "#",
+      href: "/about",
       icon: <Info className="h-4 w-4" />,
     },
     {
       label: "Privacy Policy",
-      href: "#",
+      href: "/privacy-policy",
       icon: <Shield className="h-4 w-4" />,
     },
     {
       label: "Contact",
-      href: "#",
+      href: "/contact",
       icon: <Mail className="h-4 w-4" />,
     },
     // Only include logout if user is logged in

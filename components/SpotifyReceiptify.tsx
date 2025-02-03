@@ -51,7 +51,6 @@ import {
   createPlaylist,
   getUserStats,
   getTopArtists,
-  getAvailableGenres,
 } from "@/lib/spotifyData";
 
 const formatDate = (date: Date): string => {
@@ -88,17 +87,23 @@ export default function SpotifyReceiptify() {
   const [badge, setBadge] = useState("");
   const [profileImage, setProfileImage] = useState<string>("");
   const [tracks, setTracks] = useState<Track[]>([]);
+  interface GenreStats {
+    name: string;
+    count: number;
+    percentage: number;
+  }
+
   const [userStats, setUserStats] = useState({
     totalMinutesListened: 0,
     favoriteDayTime: "",
     topGenre: "",
+    allGenres: [] as GenreStats[],
     totalLikedSongs: 0,
   });
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [displayDate, setDisplayDate] = useState<string>("");
   const [topArtists, setTopArtists] = useState<any[]>([]);
-  const [topGenres, setTopGenres] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [customization, setCustomization] = useState({
@@ -183,13 +188,12 @@ export default function SpotifyReceiptify() {
           break;
 
         case "top_genres":
-          const genresData = await getAvailableGenres();
-          setTopGenres(genresData.genres.slice(0, customization.tracks));
-          break;
-
         case "stats":
           const stats = await getUserStats(customization.period);
-          setUserStats(stats);
+          setUserStats({
+            ...stats,
+            allGenres: stats.allGenres || [], // Ensure allGenres is always an array
+          });
           break;
       }
 
@@ -613,7 +617,7 @@ export default function SpotifyReceiptify() {
                         <div className="flex items-center space-x-2">
                           <Music className="w-4 h-4 text-[#1DB954]" />
                           <span className="text-white">
-                            Top genre: {userStats.topGenre}
+                            Main genre: {userStats.topGenre}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -657,8 +661,8 @@ export default function SpotifyReceiptify() {
             <div className="text-xl sm:text-2xl font-semibold text-[#1DB954] mb-4 sm:mb-6">
               {customization.metric === "top_tracks" && "Your Top Tracks"}
               {customization.metric === "top_artists" && "Your Top Artists"}
-              {customization.metric === "top_genres" && "Your Top Genres"}
               {customization.metric === "stats" && "Your Stats"}
+              {customization.metric === "top_genres" && "Your Top Genres"}
             </div>
 
             {customization.metric === "top_tracks" && tracks.length > 0 && (
@@ -702,18 +706,30 @@ export default function SpotifyReceiptify() {
                       </div>
                     </div>
                     <div
-                      className={`w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center ${
+                      className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center cursor-pointer ${
                         customization.mode === "dark"
                           ? "border-[#1e1e1e]"
                           : "border-gray-50"
-                      } border-8`}
+                      } border-8 group`}
+                      onClick={() => {
+                        const id = tracks[0].uri.split(":")[2];
+                        window.open(
+                          `https://open.spotify.com/track/${id}`,
+                          "_blank"
+                        );
+                      }}
                     >
                       {tracks[0].album?.images[0]?.url ? (
-                        <img
-                          src={tracks[0].album.images[0].url}
-                          alt={tracks[0].name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
+                        <>
+                          <img
+                            src={tracks[0].album.images[0].url}
+                            alt={tracks[0].name}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center transition-all duration-300 rounded-full">
+                            <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          </div>
+                        </>
                       ) : (
                         <div
                           className={`w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center ${
@@ -763,13 +779,27 @@ export default function SpotifyReceiptify() {
                           <span className="text-[#1DB954] w-6 text-right font-mono text-sm sm:text-base">
                             {(index + 2).toString().padStart(2, "0")}
                           </span>
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#282828] flex items-center justify-center rounded-md overflow-hidden group-hover:bg-[#1DB954] transition-colors duration-300">
+                          <div
+                            className="relative w-10 h-10 sm:w-12 sm:h-12 bg-[#282828] flex items-center justify-center rounded-md overflow-hidden group-hover:bg-[#1DB954] transition-colors duration-300 cursor-pointer"
+                            onClick={() => {
+                              const id = track.uri.split(":")[2];
+                              window.open(
+                                `https://open.spotify.com/track/${id}`,
+                                "_blank"
+                              );
+                            }}
+                          >
                             {track.album?.images[0]?.url ? (
-                              <img
-                                src={track.album.images[0].url}
-                                alt={track.name}
-                                className="w-full h-full object-cover"
-                              />
+                              <>
+                                <img
+                                  src={track.album.images[0].url}
+                                  alt={track.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center transition-all duration-300">
+                                  <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                </div>
+                              </>
                             ) : (
                               <Music className="w-5 h-5 sm:w-6 sm:h-6 text-[#b3b3b3] group-hover:text-black transition-colors duration-300" />
                             )}
@@ -895,63 +925,43 @@ export default function SpotifyReceiptify() {
                 </div>
               </div>
             )}
-            {customization.metric === "top_genres" && (
-              <div className="space-y-6">
-                {/* Top Genre Card */}
-                {topGenres.length > 0 && (
-                  <div className="mb-6 sm:mb-8 bg-[#1e1e1e] p-4 sm:p-6 rounded-lg shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#1DB954] via-[#22c55e] to-[#1DB954]"></div>
-                    <div className="flex flex-col items-center text-center">
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center mb-4">
-                        <Music className="w-12 h-12 sm:w-16 sm:h-16 text-black" />
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                        {topGenres[0]}
-                      </div>
-                      <div className="text-xl sm:text-2xl font-bold text-[#1DB954]">
-                        #1 Top Genre
-                      </div>
+            {customization.metric === "top_genres" &&
+              userStats.allGenres?.length > 0 && (
+                <div className="space-y-6">
+                  <div className="bg-[#1e1e1e] p-4 sm:p-6 rounded-lg shadow-lg">
+                    <div className="space-y-6">
+                      {userStats.allGenres.map((genre, index) => (
+                        <div key={genre.name} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#1DB954] font-mono text-lg">
+                                #{index + 1}
+                              </span>
+                              <span className="text-xl text-white capitalize">
+                                {genre.name}
+                              </span>
+                            </div>
+                            <span className="text-lg font-bold text-[#1DB954]">
+                              {genre.percentage}%
+                            </span>
+                          </div>
+                          <div className="h-3 bg-[#282828] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#1DB954] rounded-full transition-all duration-500 ease-out"
+                              style={{ width: `${genre.percentage}%` }}
+                            />
+                          </div>
+                          <div className="text-[#b3b3b3] text-sm">
+                            {genre.count}{" "}
+                            {genre.count === 1 ? "track" : "tracks"} in this
+                            genre
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )}
-
-                {/* Genre List */}
-                <div className="space-y-4">
-                  {topGenres.slice(1).map((genre, index) => (
-                    <div
-                      key={genre}
-                      className="flex justify-between items-center group hover:bg-[#282828] p-2 sm:p-3 rounded-md transition-all duration-300 ease-in-out"
-                    >
-                      <div className="flex items-center space-x-2 sm:space-x-4">
-                        <span className="text-[#1DB954] w-6 text-right font-mono text-sm sm:text-base">
-                          {(index + 2).toString().padStart(2, "0")}
-                        </span>
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#282828] flex items-center justify-center rounded-md overflow-hidden group-hover:bg-[#1DB954] transition-colors duration-300">
-                          <Music className="w-5 h-5 sm:w-6 sm:h-6 text-[#b3b3b3] group-hover:text-black transition-colors duration-300" />
-                        </div>
-                        <div className="font-medium text-white group-hover:text-[#1DB954] transition-colors duration-300 text-sm sm:text-base">
-                          {genre}
-                        </div>
-                      </div>
-
-                      {/* Genre popularity indicator */}
-                      <div className="flex items-center space-x-2">
-                        <div className="w-20 sm:w-24 bg-[#282828] rounded-full h-2">
-                          <div
-                            className="bg-[#1DB954] h-2 rounded-full"
-                            style={{
-                              width: `${
-                                100 - (index + 1) * (100 / topGenres.length)
-                              }%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              </div>
-            )}
+              )}
             {customization.metric === "stats" && (
               <div className="space-y-6">
                 {/* Overall Stats Card */}
@@ -988,19 +998,42 @@ export default function SpotifyReceiptify() {
                     </div>
                   </div>
 
-                  {/* Top Genre */}
+                  {/* Top Genres */}
                   <div className="bg-[#282828] p-4 sm:p-6 rounded-lg">
                     <div className="flex items-center justify-between mb-4">
                       <div className="text-lg font-semibold text-white">
-                        Top Genre
+                        Genre Distribution
                       </div>
                       <Music className="w-5 h-5 text-[#1DB954]" />
                     </div>
-                    <div className="text-3xl font-bold text-[#1DB954]">
-                      {userStats.topGenre}
+                    <div className="space-y-4">
+                      {userStats.allGenres?.length > 0 ? (
+                        userStats.allGenres.map((genre) => (
+                          <div key={genre.name} className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-white capitalize">
+                                {genre.name}
+                              </span>
+                              <span className="text-xs text-[#1DB954]">
+                                {genre.percentage}%
+                              </span>
+                            </div>
+                            <div className="h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#1DB954] rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${genre.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[#b3b3b3] text-sm text-center py-4">
+                          No genre data available
+                        </div>
+                      )}
                     </div>
-                    <div className="text-sm text-[#b3b3b3] mt-2">
-                      Most played music genre
+                    <div className="text-sm text-[#b3b3b3] mt-4">
+                      Based on your top artists
                     </div>
                   </div>
                 </div>

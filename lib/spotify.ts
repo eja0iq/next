@@ -1,14 +1,15 @@
 import SpotifyWebApi from 'spotify-web-api-node';
 
+import { getCallbackUrl } from './utils/domain';
+
 const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID!;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI!;
 
 // Create a new instance of the Spotify Web API
 export const spotify = new SpotifyWebApi({
   clientId,
   clientSecret,
-  redirectUri,
+  redirectUri: getCallbackUrl(),
 });
 
 // Scopes for authorization
@@ -26,7 +27,7 @@ const scopes = [
 const params = {
   client_id: clientId,
   response_type: 'code',
-  redirect_uri: redirectUri,
+  redirect_uri: getCallbackUrl(),
   scope: scopes.join(' '),
   show_dialog: 'true'
 };

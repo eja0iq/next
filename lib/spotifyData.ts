@@ -124,14 +124,6 @@ export const addTracksToPlaylist = async (playlistId: string, trackUris: string[
   await spotify.addTracksToPlaylist(playlistId, trackUris);
 };
 
-// Get available genres
-export const getAvailableGenres = async () => {
-  const token = await checkAndRefreshToken();
-  spotify.setAccessToken(token);
-  const response = await spotify.getAvailableGenreSeeds();
-  return response.body;
-};
-
 // Get user's followed artists
 export const getFollowedArtists = async () => {
   const token = await checkAndRefreshToken();
@@ -207,12 +199,13 @@ export const getUserStats = async (timeRange: TimeRange) => {
       limit: 20,
       time_range: timeRange
     });
-    const topGenre = calculateTopGenre(topArtists.body.items);
+    const genreData = calculateTopGenre(topArtists.body.items);
     
     return {
       totalMinutesListened,
       favoriteDayTime,
-      topGenre,
+      topGenre: genreData.mainGenre,
+      allGenres: genreData.allGenres,
       totalLikedSongs: savedTracks.body.total,
       timeRange
     };
@@ -266,17 +259,62 @@ const calculateFavoriteDayTime = (recentTracks: any[], timeRange: TimeRange): st
 };
 
 
-const calculateTopGenre = (artists: any[]) => {
-  const genres = artists.flatMap(artist => artist.genres);
-  const genreCounts = genres.reduce((acc: {[key: string]: number}, genre: string) => {
-    acc[genre] = (acc[genre] || 0) + 1;
-    return acc;
-  }, {});
-  
-  // Add type annotation for the reduce function
-  return Object.entries(genreCounts).reduce<[string, number]>((a, b) => {
-    return a[1] > (b[1] as number) ? a : [b[0], b[1] as number];
-  }, ['', 0])[0] || 'N/A';
+interface GenreStats {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+interface GenreCounts {
+  [key: string]: number;
+}
+
+const calculateTopGenre = (artists: any[]): { mainGenre: string; allGenres: GenreStats[] } => {
+  try {
+    if (!artists || !Array.isArray(artists) || artists.length === 0) {
+      return {
+        mainGenre: 'N/A',
+        allGenres: []
+      };
+    }
+
+    // Filter out any undefined or null genres
+    const genres = artists
+      .flatMap(artist => artist.genres || [])
+      .filter((genre): genre is string => Boolean(genre)); // Type guard to ensure string type
+
+    if (genres.length === 0) {
+      return {
+        mainGenre: 'N/A',
+        allGenres: []
+      };
+    }
+
+    const genreCounts = genres.reduce<GenreCounts>((acc, genre) => {
+      acc[genre] = (acc[genre] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const totalGenres = genres.length;
+    const genreStats: GenreStats[] = Object.entries(genreCounts)
+      .map(([name, count]): GenreStats => ({
+        name,
+        count,
+        percentage: Math.round((count / totalGenres) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      mainGenre: genreStats[0]?.name || 'N/A',
+      allGenres: genreStats.slice(0, 5) // Get top 5 genres
+    };
+  } catch (error) {
+    console.error('Error calculating top genres:', error);
+    return {
+      mainGenre: 'N/A',
+      allGenres: []
+    };
+  }
 };
 
 const getTimeRangeMultiplier = (timeRange: string) => {

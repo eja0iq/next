@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { getCallbackUrl } from "@/lib/utils/domain";
 
-const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const params = new URLSearchParams({
       grant_type: "authorization_code",
       code: code,
-      redirect_uri: REDIRECT_URI!,
+      redirect_uri: getCallbackUrl(),
     });
 
     const tokenResponse = await fetch(tokenEndpoint, {

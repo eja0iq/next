@@ -1,4 +1,5 @@
 import { spotify } from './spotify';
+import { getCallbackUrl } from './utils/domain';
 
 interface TokenResponse {
   access_token: string;
@@ -17,12 +18,11 @@ export const exchangeCodeForTokens = async (code: string): Promise<TokenResponse
     if (!code || typeof code !== 'string') {
       throw new Error('Invalid authorization code');
     }
-
-    const params = new URLSearchParams({
-      code,
-      redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI,
-      grant_type: 'authorization_code',
-    });
+const params = new URLSearchParams({
+  code,
+  redirect_uri: getCallbackUrl(),
+  grant_type: 'authorization_code'
+});
 
     // Log request details for debugging (remove in production)
     console.log('Token exchange request details:', {

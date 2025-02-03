@@ -79,11 +79,13 @@ export default function CustomizationPanel({
   };
 
   return (
-    <Card className="w-full bg-[#181818] border-none shadow-2xl rounded-xl overflow-hidden">
-      <CardHeader className="border-b border-[#282828] bg-[#282828] p-4 sm:p-6">
-        <CardTitle className="text-xl sm:text-2xl font-bold text-[#1DB954] flex items-center">
-          <BarChart2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
-          Customize Receipt
+    <Card className="w-full bg-[#181818] border-none shadow-2xl rounded-xl overflow-hidden transform transition-all duration-300 hover:shadow-[0_0_30px_rgba(29,185,84,0.1)]">
+      <CardHeader className="border-b border-[#282828] bg-gradient-to-r from-[#1e1e1e] via-[#202020] to-[#282828] p-4 sm:p-6">
+        <CardTitle className="text-xl sm:text-2xl font-bold text-white flex items-center group">
+          <BarChart2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-[#1DB954] transform transition-transform duration-300 group-hover:scale-110" />
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-[#1DB954]">
+            Customize Receipt
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
@@ -104,15 +106,35 @@ export default function CustomizationPanel({
             >
               <SelectTrigger
                 id="metric"
-                className="w-full bg-[#282828] border-none text-white text-sm sm:text-base h-9 sm:h-10"
+                className="w-full bg-[#282828] border border-transparent text-white text-sm sm:text-base h-9 sm:h-10 hover:bg-[#323232] hover:border-[#1DB954] transition-all duration-300 focus:border-[#1DB954] focus:ring-1 focus:ring-[#1DB954]"
               >
                 <SelectValue placeholder="Select metric" />
               </SelectTrigger>
-              <SelectContent className="bg-[#282828] text-sm sm:text-base">
-                <SelectItem value="top_tracks">Top Tracks</SelectItem>
-                <SelectItem value="top_artists">Top Artists</SelectItem>
-                <SelectItem value="top_genres">Top Genres</SelectItem>
-                <SelectItem value="stats">Stats</SelectItem>
+              <SelectContent className="bg-[#282828] text-sm sm:text-base border border-[#1DB954]/20 animate-in fade-in-80 zoom-in-95">
+                <SelectItem
+                  value="top_tracks"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Top Tracks
+                </SelectItem>
+                <SelectItem
+                  value="top_artists"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Top Artists
+                </SelectItem>
+                <SelectItem
+                  value="top_genres"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Top Genres
+                </SelectItem>
+                <SelectItem
+                  value="stats"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Stats
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,27 +154,44 @@ export default function CustomizationPanel({
             >
               <SelectTrigger
                 id="period"
-                className="w-full bg-[#282828] border-none text-white text-sm sm:text-base h-9 sm:h-10"
+                className="w-full bg-[#282828] border-none text-white text-sm sm:text-base h-9 sm:h-10 hover:bg-[#323232] transition-colors duration-200"
               >
                 <SelectValue placeholder="Select time period" />
               </SelectTrigger>
-              <SelectContent className="bg-[#282828] text-sm sm:text-base">
-                <SelectItem value="short_term">Last 4 weeks</SelectItem>
-                <SelectItem value="medium_term">Last 6 months</SelectItem>
-                <SelectItem value="long_term">All time</SelectItem>
+              <SelectContent className="bg-[#282828] text-sm sm:text-base border border-[#1DB954]/20 animate-in fade-in-80 zoom-in-95">
+                <SelectItem
+                  value="short_term"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Last 4 weeks
+                </SelectItem>
+                <SelectItem
+                  value="medium_term"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Last 6 months
+                </SelectItem>
+                <SelectItem
+                  value="long_term"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  All time
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         {/* Tracks Slider */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-3 pt-2">
           <Label
             htmlFor="tracks"
-            className="text-white flex items-center text-sm sm:text-base"
+            className="text-white flex items-center text-sm sm:text-base group"
           >
-            <Music className="w-4 h-4 mr-2" />
-            Top Tracks
+            <Music className="w-4 h-4 mr-2 transform transition-transform duration-300 group-hover:scale-110 text-[#1DB954]" />
+            <span className="group-hover:text-[#1DB954] transition-colors duration-300">
+              Top Tracks
+            </span>
           </Label>
           <Slider
             id="tracks"
@@ -168,11 +207,20 @@ export default function CustomizationPanel({
               setIsSliding(false);
               updateCustomization("tracks", value[0]);
             }}
-            className="[&>span:first-child]:bg-[#1DB954]"
+            className="[&_.bg-primary/20]:bg-[#282828] [&_.bg-primary]:bg-[#1DB954] [&_.bg-primary]:hover:bg-[#22c55e] [&_[data-radix-slider-thumb]]:bg-[#1DB954] [&_[data-radix-slider-thumb]]:hover:bg-[#22c55e] [&_[data-radix-slider-thumb]]:hover:scale-110 [&_[data-radix-slider-thumb]]:border-[#1DB954] [&_[data-radix-slider-thumb]]:transition-all [&_[data-radix-slider-thumb]]:duration-300 transition-colors duration-200"
           />
-          <div className="text-[#b3b3b3] text-xs sm:text-sm">
-            Number of tracks: {tempTrackValue}
-            {isSliding && " (Release to update)"}
+          <div className="text-[#b3b3b3] text-xs sm:text-sm flex items-center justify-between">
+            <span>
+              Number of tracks:{" "}
+              <span className="text-[#1DB954] font-medium">
+                {tempTrackValue}
+              </span>
+            </span>
+            {isSliding && (
+              <span className="text-[#1DB954] animate-pulse">
+                Release to update
+              </span>
+            )}
           </div>
         </div>
 
@@ -219,14 +267,29 @@ export default function CustomizationPanel({
             >
               <SelectTrigger
                 id="font"
-                className="w-full bg-[#282828] border-none text-white text-sm sm:text-base h-9 sm:h-10"
+                className="w-full bg-[#282828] border-none text-white text-sm sm:text-base h-9 sm:h-10 hover:bg-[#323232] transition-colors duration-200"
               >
                 <SelectValue placeholder="Select font" />
               </SelectTrigger>
-              <SelectContent className="bg-[#282828] text-sm sm:text-base">
-                <SelectItem value="sans">Sans-serif</SelectItem>
-                <SelectItem value="serif">Serif</SelectItem>
-                <SelectItem value="mono">Monospace</SelectItem>
+              <SelectContent className="bg-[#282828] text-sm sm:text-base border border-[#1DB954]/20 animate-in fade-in-80 zoom-in-95">
+                <SelectItem
+                  value="sans"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Sans-serif
+                </SelectItem>
+                <SelectItem
+                  value="serif"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Serif
+                </SelectItem>
+                <SelectItem
+                  value="mono"
+                  className="text-white hover:bg-[#1DB954] hover:text-black transition-colors"
+                >
+                  Monospace
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -235,17 +298,17 @@ export default function CustomizationPanel({
         {/* Action Buttons */}
         <div className="space-y-4">
           <Button
-            className="w-full bg-[#1DB954] text-black hover:bg-[#22c55e] transition-colors duration-300 h-10 text-sm sm:text-base"
+            className="w-full bg-gradient-to-r from-[#1DB954] to-[#22c55e] text-black hover:shadow-lg hover:shadow-[#1DB954]/20 transform hover:-translate-y-0.5 transition-all duration-300 h-10 text-sm sm:text-base font-semibold"
             onClick={downloadAsImage}
           >
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="w-4 h-4 mr-2 animate-bounce" />
             Download Images
           </Button>
 
           {/* Create Playlist Button - Only shown when metric is top_tracks */}
           {customization.metric === "top_tracks" && (
             <Button
-              className="w-full bg-[#1DB954] text-black hover:bg-[#22c55e] transition-colors duration-300 h-10 text-sm sm:text-base"
+              className="w-full bg-gradient-to-r from-[#1DB954] to-[#22c55e] text-black hover:shadow-lg hover:shadow-[#1DB954]/20 transform hover:-translate-y-0.5 transition-all duration-300 h-10 text-sm sm:text-base font-semibold disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-none"
               onClick={handleCreatePlaylistClick}
               disabled={isCreatingPlaylist}
             >
@@ -290,19 +353,27 @@ export default function CustomizationPanel({
           />
 
           {/* Share Section */}
-          <div className="bg-[#282828] p-4 rounded-lg space-y-3">
-            <h3 className="text-base sm:text-lg font-semibold text-[#1DB954]">
-              Share Your Receiptify
-            </h3>
-            <p className="text-[#b3b3b3] text-xs sm:text-sm">
+          <div className="bg-gradient-to-br from-[#323232] to-[#1e1e1e] p-4 rounded-lg space-y-4 border border-[#1DB954]/20 hover:border-[#1DB954] shadow-lg transition-all duration-300 group">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-base sm:text-lg font-semibold text-white flex items-center group-hover:text-[#1DB954] transition-colors duration-300">
+                <span className="transform transition-transform duration-300 group-hover:scale-105">
+                  Share Your Receiptify
+                </span>
+                <span className="ml-2 inline-block animate-pulse text-[#1DB954]">
+                  ✨
+                </span>
+              </h3>
+            </div>
+            <p className="text-white/90 text-xs sm:text-sm leading-relaxed">
               Download your personalized Spotify Receiptify and share it on
-              Instagram!
+              <span className="text-[#1DB954] font-medium"> Instagram </span>
+              to showcase your music taste!
             </p>
             <Button
-              className="w-full bg-gradient-to-r from-[#405DE6] via-[#5851DB] to-[#833AB4] text-white hover:opacity-90 transition-opacity duration-300 h-10 text-sm sm:text-base"
+              className="w-full bg-gradient-to-r from-[#405DE6] via-[#5851DB] to-[#833AB4] text-white hover:shadow-lg hover:shadow-purple-500/20 transform hover:-translate-y-0.5 transition-all duration-300 h-10 text-sm sm:text-base font-medium"
               onClick={handleShare}
             >
-              <Instagram className="w-4 h-4 mr-2" />
+              <Instagram className="w-4 h-4 mr-2 group-hover:animate-spin-slow" />
               {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
                 ? "Share to Instagram Story"
                 : "Share on Instagram"}
