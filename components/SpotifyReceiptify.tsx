@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import CustomizationPanel from "./CustomizationPanel";
 import LoginPage from "./LoginPage";
-import domtoimage from "dom-to-image-more";
+import * as domtoimage from "dom-to-image-more";
 import {
   getUserProfile,
   getTopTracks,
