@@ -232,51 +232,12 @@ export default function SpotifyReceiptify() {
 
   const handleShare = async () => {
     try {
-      if (!receiptRef.current) return;
+      if (!receiptRef.current) {
+        throw new Error("Receipt reference is null");
+      }
 
       // Check if running on mobile device
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      // Store original styles
-      const originalWidth = receiptRef.current.style.width;
-      const originalHeight = receiptRef.current.style.height;
-
-      // Set fixed width for Instagram story dimensions
-      receiptRef.current.style.width = "758px";
-
-      // Calculate height based on metric type and number of items
-      if (
-        customization.tracks === 10 &&
-        customization.metric === "top_tracks"
-      ) {
-        receiptRef.current.style.height = "1384px";
-      }
-
-      // Generate the image
-      const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        width: 758,
-        height:
-          customization.tracks === 10 && customization.metric === "top_tracks"
-            ? 1384
-            : undefined,
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left",
-        },
-      });
-
-      // Restore original styles
-      receiptRef.current.style.width = originalWidth;
-      receiptRef.current.style.height = originalHeight;
-
-      // Convert data URL to Blob for sharing
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], "spotify-receipt.png", {
-        type: "image/png",
-      });
-
-      // Check if accessing from Instagram (mobile only)
       const isInstagramBrowser = /Instagram/.test(navigator.userAgent);
 
       if (!isMobile && isInstagramBrowser) {
@@ -287,20 +248,29 @@ export default function SpotifyReceiptify() {
         return;
       }
 
-      if (isMobile && isInstagramBrowser) {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "My Spotify Receiptify",
-            text: "Check out my Spotify stats!",
-          });
-          toast.success("Opening Instagram Stories...", {
-            duration: 3000,
-            position: "top-center",
-          });
-        }
-      } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        // Regular share for both mobile and desktop
+      const dataUrl = await generateImage(receiptRef.current);
+
+      // Convert data URL to Blob for sharing
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "spotify-receipt.png", {
+        type: "image/png",
+      });
+
+      const canShare =
+        navigator.canShare && navigator.canShare({ files: [file] });
+
+      if (isMobile && isInstagramBrowser && canShare) {
+        await navigator.share({
+          files: [file],
+          title: "My Spotify Receiptify",
+          text: "Check out my Spotify stats!",
+        });
+        toast.success("Opening Instagram Stories...", {
+          duration: 3000,
+          position: "top-center",
+        });
+      } else if (canShare) {
         await navigator.share({
           files: [file],
           title: "My Spotify Receiptify",
@@ -312,15 +282,11 @@ export default function SpotifyReceiptify() {
         });
       } else {
         if (isMobile) {
-          toast.error(
-            "Sharing is not supported on your device. The image will be downloaded instead.",
-            {
-              duration: 3000,
-              position: "top-center",
-            }
-          );
+          toast.error("Sharing not supported. Downloading instead...", {
+            duration: 3000,
+            position: "top-center",
+          });
         }
-        // Fallback to download
         const link = document.createElement("a");
         link.download = "spotify-receipt.png";
         link.href = dataUrl;
@@ -331,7 +297,7 @@ export default function SpotifyReceiptify() {
         });
       }
     } catch (error) {
-      console.error("Error sharing:", error);
+      console.error("Share error:", error);
       toast.error("Failed to share. Please try again.", {
         duration: 3000,
         position: "top-center",
@@ -423,48 +389,65 @@ export default function SpotifyReceiptify() {
     }
   };
 
+  const generateImage = async (element: HTMLElement) => {
+    const bg = customization.mode === "dark" ? "#181818" : "#f8fafc";
+
+    // Create a container for the clone
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.top = "0";
+    container.style.left = "0";
+    container.style.width = "758px";
+    container.style.height = "1384px";
+    container.style.zIndex = "-9999";
+    container.style.opacity = "0";
+    container.style.background = bg;
+    container.style.overflow = "hidden";
+    document.body.appendChild(container);
+
+    try {
+      // Clone the element
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.width = "758px";
+      clone.style.height = "1384px";
+      clone.style.position = "relative";
+      clone.style.background = bg;
+      container.appendChild(clone);
+
+      // Wait for styles and images to settle
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Generate the image
+      const dataUrl = await domtoimage.toPng(clone, {
+        width: 758,
+        height: 1384,
+        style: {
+          transform: "none",
+          background: bg,
+        },
+        bgcolor: bg,
+      });
+
+      return dataUrl;
+    } finally {
+      // Always clean up
+      document.body.removeChild(container);
+    }
+  };
+
   const downloadAsImage = async () => {
     const toastId = toast.loading("Preparing receipt...");
 
     try {
-      if (!receiptRef.current) return;
-
-      toast.loading("Generating image...", { id: toastId });
-
-      // Store original styles
-      const originalWidth = receiptRef.current.style.width;
-      const originalHeight = receiptRef.current.style.height;
-
-      // Set fixed width for Instagram story dimensions
-      receiptRef.current.style.width = "758px";
-
-      // Calculate height based on metric type and number of items
-      let height;
-      if (
-        customization.tracks === 10 &&
-        customization.metric === "top_tracks"
-      ) {
-        height = "1384px"; // Height for Instagram story dimensions
-        receiptRef.current.style.height = height;
+      if (!receiptRef.current) {
+        throw new Error("Receipt reference is null");
       }
 
-      // Generate the image with calculated dimensions
-      const dataUrl = await domtoimage.toPng(receiptRef.current, {
-        width: 758,
-        height: height ? parseInt(height) : undefined,
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left",
-        },
-      });
-
-      // Restore original styles
-      receiptRef.current.style.width = originalWidth;
-      receiptRef.current.style.height = originalHeight;
+      toast.loading("Generating image...", { id: toastId });
+      const dataUrl = await generateImage(receiptRef.current);
 
       toast.loading("Processing download...", { id: toastId });
 
-      // Create and click download link
       const link = document.createElement("a");
       link.download = "spotify-receipt.png";
       link.href = dataUrl;
