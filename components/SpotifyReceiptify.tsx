@@ -44,7 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import CustomizationPanel from "./CustomizationPanel";
 import LoginPage from "./LoginPage";
-import domtoimage from "dom-to-image";
+import domtoimage from "dom-to-image-more";
 import {
   getUserProfile,
   getTopTracks,
@@ -392,77 +392,152 @@ export default function SpotifyReceiptify() {
   const generateImage = async (element: HTMLElement) => {
     const bg = customization.mode === "dark" ? "#181818" : "#f8fafc";
 
-    // Create a container for the clone
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.top = "0";
-    container.style.left = "0";
-    container.style.width = "758px";
-    container.style.height = "1384px";
-    container.style.zIndex = "-9999";
-    container.style.opacity = "0";
-    container.style.background = bg;
-    container.style.overflow = "hidden";
-    document.body.appendChild(container);
-
     try {
-      // Clone the element
+      // Make sure all images are loaded first
+      const images = Array.from(element.getElementsByTagName("img"));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = resolve; // Don't reject on error, just continue
+          });
+        })
+      );
+
+      // Create a clone for manipulation
       const clone = element.cloneNode(true) as HTMLElement;
-      clone.style.width = "758px";
-      clone.style.height = "1384px";
-      clone.style.position = "relative";
-      clone.style.background = bg;
-      container.appendChild(clone);
 
-      // Wait for styles and images to settle
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Generate the image
-      const dataUrl = await domtoimage.toPng(clone, {
-        width: 758,
-        height: 1384,
-        style: {
-          transform: "none",
-          background: bg,
-        },
-        bgcolor: bg,
+      // Apply all necessary styles
+      Object.assign(clone.style, {
+        position: "absolute",
+        left: "-9999px",
+        top: "-9999px",
+        width: "758px",
+        height: "1384px",
+        transform: "none",
+        transformOrigin: "center",
+        margin: "0",
+        padding: "0",
+        background: bg,
+        display: "block",
       });
 
-      return dataUrl;
-    } finally {
-      // Always clean up
-      document.body.removeChild(container);
+      // Append to body
+      document.body.appendChild(clone);
+
+      try {
+        // Generate image with dom-to-image-more
+        const dataUrl = await domtoimage.toPng(clone, {
+          width: 758,
+          height: 1384,
+          style: {
+            transform: "none",
+            transformOrigin: "center",
+            background: bg,
+          },
+          bgcolor: bg,
+          quality: 1,
+          filter: (node: Node) => {
+            const element = node as HTMLElement;
+            // Skip problematic elements
+            return !(
+              (
+                element.classList?.contains("loading-spinner") ||
+                element.classList?.contains("animate-spin") ||
+                element.classList?.contains("absolute")
+              ) // Skip absolutely positioned elements
+            );
+          },
+          imagePlaceholder:
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        });
+
+        return dataUrl;
+      } finally {
+        // Clean up clone
+        document.body.removeChild(clone);
+      }
+    } catch (error) {
+      console.error("Image generation error:", error);
+      throw error;
     }
   };
 
   const downloadAsImage = async () => {
     const toastId = toast.loading("Preparing receipt...");
+    let retryCount = 0;
+    const maxRetries = 3;
+    let blob: Blob | null = null;
 
-    try {
-      if (!receiptRef.current) {
-        throw new Error("Receipt reference is null");
+    const attemptDownload = async () => {
+      try {
+        if (!receiptRef.current) {
+          throw new Error("Receipt reference is null");
+        }
+
+        // Clear memory
+        if (blob) {
+          URL.revokeObjectURL(URL.createObjectURL(blob));
+          blob = null;
+        }
+
+        toast.loading("Generating image...", { id: toastId });
+        const dataUrl = await generateImage(receiptRef.current);
+
+        // Convert to blob
+        const fetchResponse = await fetch(dataUrl);
+        blob = await fetchResponse.blob();
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        if (isIOS) {
+          // For iOS, open in new tab
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, "_blank");
+          toast.dismiss(toastId);
+          toast.success("Image opened in new tab. Long press to save!", {
+            duration: 5000,
+          });
+          // Clean up blob URL after a delay
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+          return;
+        }
+
+        // For all other browsers, download directly
+        toast.loading("Processing download...", { id: toastId });
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = "spotify-receipt.png";
+        link.href = blobUrl;
+        link.click();
+
+        // Clean up after a short delay to ensure download starts
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          toast.dismiss(toastId);
+          toast.success("Image downloaded successfully!");
+        }, 1000);
+      } catch (error) {
+        console.error("Error generating image:", error);
+
+        if (retryCount < maxRetries) {
+          retryCount++;
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return attemptDownload();
+        }
+
+        toast.dismiss(toastId);
+        toast.error(
+          "Failed to generate image. Please try again or take a screenshot.",
+          {
+            duration: 5000,
+          }
+        );
       }
+    };
 
-      toast.loading("Generating image...", { id: toastId });
-      const dataUrl = await generateImage(receiptRef.current);
-
-      toast.loading("Processing download...", { id: toastId });
-
-      const link = document.createElement("a");
-      link.download = "spotify-receipt.png";
-      link.href = dataUrl;
-      link.click();
-
-      toast.dismiss(toastId);
-      toast.success("Image downloaded successfully!");
-    } catch (error) {
-      console.error("Error generating image:", error);
-      toast.dismiss(toastId);
-      toast.error(
-        "Failed to generate image. Please try again or take a screenshot instead.",
-        { duration: 5000 }
-      );
-    }
+    await attemptDownload();
   };
 
   // Format minutes to hours and minutes
