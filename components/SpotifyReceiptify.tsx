@@ -154,6 +154,13 @@ export default function SpotifyReceiptify() {
       setProfileImage(userProfile.images?.[0]?.url || "");
 
       // Handle different metrics
+      // Always fetch user stats for the hover card
+      const stats = await getUserStats(customization.period);
+      setUserStats({
+        ...stats,
+        allGenres: stats.allGenres || [], // Ensure allGenres is always an array
+      });
+
       switch (customization.metric) {
         case "top_tracks":
           // Load tracks data
@@ -188,12 +195,6 @@ export default function SpotifyReceiptify() {
           break;
 
         case "top_genres":
-        case "stats":
-          const stats = await getUserStats(customization.period);
-          setUserStats({
-            ...stats,
-            allGenres: stats.allGenres || [], // Ensure allGenres is always an array
-          });
           break;
       }
 
@@ -244,14 +245,20 @@ export default function SpotifyReceiptify() {
       receiptRef.current.style.width = "758px";
 
       // Calculate height based on metric type and number of items
-      if (customization.tracks === 10 && customization.metric === "top_tracks") {
+      if (
+        customization.tracks === 10 &&
+        customization.metric === "top_tracks"
+      ) {
         receiptRef.current.style.height = "1384px";
       }
 
       // Generate the image
       const dataUrl = await domtoimage.toPng(receiptRef.current, {
         width: 758,
-        height: customization.tracks === 10 && customization.metric === "top_tracks" ? 1384 : undefined,
+        height:
+          customization.tracks === 10 && customization.metric === "top_tracks"
+            ? 1384
+            : undefined,
         style: {
           transform: "scale(1)",
           transformOrigin: "top left",
@@ -262,21 +269,26 @@ export default function SpotifyReceiptify() {
       receiptRef.current.style.width = originalWidth;
       receiptRef.current.style.height = originalHeight;
 
-      if (isMobile) {
-        // Convert data URL to Blob for sharing
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], "spotify-receipt.png", {
-          type: "image/png",
+      // Convert data URL to Blob for sharing
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "spotify-receipt.png", {
+        type: "image/png",
+      });
+
+      // Check if accessing from Instagram (mobile only)
+      const isInstagramBrowser = /Instagram/.test(navigator.userAgent);
+
+      if (!isMobile && isInstagramBrowser) {
+        toast.error("Instagram sharing is only available on mobile devices", {
+          duration: 3000,
+          position: "top-center",
         });
+        return;
+      }
 
-        // Check if sharing to Instagram Stories is supported
-        const isInstagramShareSupported = navigator.canShare &&
-          navigator.canShare({ files: [file] }) &&
-          /Instagram/.test(navigator.userAgent);
-
-        if (isInstagramShareSupported) {
-          // Share to Instagram Stories
+      if (isMobile && isInstagramBrowser) {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: "My Spotify Receiptify",
@@ -286,32 +298,29 @@ export default function SpotifyReceiptify() {
             duration: 3000,
             position: "top-center",
           });
-        } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          // Regular mobile share
-          await navigator.share({
-            files: [file],
-            title: "My Spotify Receiptify",
-            text: "Check out my Spotify stats!",
-          });
-          toast.success("Shared successfully!", {
-            duration: 3000,
-            position: "top-center",
-          });
-        } else {
-          // Fallback to download on mobile
-          const link = document.createElement("a");
-          link.href = dataUrl;
-          link.download = "spotify-receipt.png";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          toast.success("Image downloaded successfully!", {
-            duration: 3000,
-            position: "top-center",
-          });
         }
+      } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Regular share for both mobile and desktop
+        await navigator.share({
+          files: [file],
+          title: "My Spotify Receiptify",
+          text: "Check out my Spotify stats!",
+        });
+        toast.success("Shared successfully!", {
+          duration: 3000,
+          position: "top-center",
+        });
       } else {
-        // For desktop: download directly
+        if (isMobile) {
+          toast.error(
+            "Sharing is not supported on your device. The image will be downloaded instead.",
+            {
+              duration: 3000,
+              position: "top-center",
+            }
+          );
+        }
+        // Fallback to download
         const link = document.createElement("a");
         link.download = "spotify-receipt.png";
         link.href = dataUrl;
@@ -511,22 +520,25 @@ export default function SpotifyReceiptify() {
       <div className="flex flex-col lg:flex-row gap-4 w-full max-w-7xl mx-auto">
         <Card
           ref={receiptRef}
-          className={`w-full lg:w-3/5 border-none shadow-2xl rounded-xl overflow-hidden ${customization.mode === "dark" ? "bg-[#181818]" : "bg-white"
-            } ${getFontClass(customization.font)}`}
+          className={`w-full lg:w-3/5 border-none shadow-2xl rounded-xl overflow-hidden ${
+            customization.mode === "dark" ? "bg-[#181818]" : "bg-slate-50"
+          } ${getFontClass(customization.font)}`}
         >
           {/* Header Section */}
           <CardHeader
-            className={`border-b p-3 sm:p-6 ${customization.mode === "dark"
-              ? "border-[#282828] bg-[#282828]"
-              : "border-gray-100 bg-gray-50"
-              }`}
+            className={`border-b p-3 sm:p-6 ${
+              customization.mode === "dark"
+                ? "border-[#282828] bg-[#282828]"
+                : "border-slate-200 bg-slate-50"
+            }`}
           >
             <div className="flex items-center justify-between w-full mb-4">
               <CardTitle
-                className={`text-2xl sm:text-4xl font-bold flex items-center ${customization.mode === "dark"
-                  ? "text-[#1DB954]"
-                  : "text-[#1DB954]"
-                  }`}
+                className={`text-2xl sm:text-4xl font-bold flex items-center ${
+                  customization.mode === "dark"
+                    ? "text-[#1DB954]"
+                    : "text-[#1DB954]"
+                }`}
               >
                 <Music className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3" />
                 <span>Receiptify+</span>
@@ -563,8 +575,9 @@ export default function SpotifyReceiptify() {
                         disabled={isLoading}
                       >
                         <RefreshCw
-                          className={`h-4 w-4 ${isLoading ? "animate-spin" : ""
-                            }`}
+                          className={`h-4 w-4 ${
+                            isLoading ? "animate-spin" : ""
+                          }`}
                         />
                       </Button>
                     </TooltipTrigger>
@@ -604,8 +617,9 @@ export default function SpotifyReceiptify() {
                       className="text-white hover:text-black hover:bg-[#1DB954] cursor-pointer"
                     >
                       <RefreshCw
-                        className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""
-                          }`}
+                        className={`h-4 w-4 mr-2 ${
+                          isLoading ? "animate-spin" : ""
+                        }`}
                       />
                       Refresh Data
                     </DropdownMenuItem>
@@ -631,7 +645,13 @@ export default function SpotifyReceiptify() {
                           ) : (
                             <User className="w-5 h-5 text-[#1DB954]" />
                           )}
-                          <span className="text-base sm:text-lg font-medium text-white">
+                          <span
+                            className={`text-base sm:text-lg font-medium ${
+                              customization.mode === "dark"
+                                ? "text-white"
+                                : "text-black"
+                            }`}
+                          >
                             {userName}
                           </span>
                         </div>
@@ -683,8 +703,8 @@ export default function SpotifyReceiptify() {
                     {customization.period === "short_term"
                       ? "Last 4 weeks"
                       : customization.period === "medium_term"
-                        ? "Last 6 months"
-                        : "All time"}
+                      ? "Last 6 months"
+                      : "All time"}
                   </span>
                 </div>
               </div>
@@ -698,10 +718,11 @@ export default function SpotifyReceiptify() {
 
           {/* Content Section */}
           <CardContent
-            className={`p-3 sm:p-6 ${customization.mode === "dark"
-              ? "bg-gradient-to-b from-[#181818] to-[#282828]"
-              : "bg-gradient-to-b from-white to-gray-50"
-              }`}
+            className={`p-3 sm:p-6 ${
+              customization.mode === "dark"
+                ? "bg-gradient-to-b from-[#181818] to-[#282828]"
+                : "bg-gradient-to-b from-slate-50 to-slate-100"
+            }`}
           >
             <div className="text-xl sm:text-2xl font-semibold text-[#1DB954] mb-4 sm:mb-6">
               {customization.metric === "top_tracks" && "Your Top Tracks"}
@@ -714,19 +735,21 @@ export default function SpotifyReceiptify() {
               <>
                 {/* Top Track Card */}
                 <div
-                  className={`mb-6 sm:mb-8 ${customization.mode === "dark"
-                    ? "bg-[#1e1e1e]"
-                    : "bg-gray-50"
-                    } p-4 sm:p-6 rounded-lg shadow-lg relative overflow-hidden`}
+                  className={`mb-6 sm:mb-8 ${
+                    customization.mode === "dark"
+                      ? "bg-[#1e1e1e]"
+                      : "bg-slate-100"
+                  } p-4 sm:p-6 rounded-lg shadow-lg relative overflow-hidden`}
                 >
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#1DB954] via-[#22c55e] to-[#1DB954]"></div>
                   <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                     <div className="flex-1">
                       <div
-                        className={`text-2xl sm:text-3xl font-bold mb-2 text-center sm:text-left ${customization.mode === "dark"
-                          ? "text-white"
-                          : "text-gray-900"
-                          } ${getFontClass(customization.font)}`}
+                        className={`text-2xl sm:text-3xl font-bold mb-2 text-center sm:text-left ${
+                          customization.mode === "dark"
+                            ? "text-white"
+                            : "text-gray-900"
+                        } ${getFontClass(customization.font)}`}
                       >
                         {tracks[0].name}
                       </div>
@@ -738,20 +761,22 @@ export default function SpotifyReceiptify() {
                         {tracks[0].artist}
                       </div>
                       <div
-                        className={`flex items-center justify-center sm:justify-start text-sm ${customization.mode === "dark"
-                          ? "text-[#b3b3b3]"
-                          : "text-gray-600"
-                          }`}
+                        className={`flex items-center justify-center sm:justify-start text-sm ${
+                          customization.mode === "dark"
+                            ? "text-[#b3b3b3]"
+                            : "text-gray-600"
+                        }`}
                       >
                         <Clock className="w-4 h-4 mr-2" />
                         {tracks[0].duration}
                       </div>
                     </div>
                     <div
-                      className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center cursor-pointer ${customization.mode === "dark"
-                        ? "border-[#1e1e1e]"
-                        : "border-gray-50"
-                        } border-8 group`}
+                      className={`relative w-24 h-24 sm:w-32 sm:h-32 bg-[#1DB954] rounded-full flex items-center justify-center cursor-pointer ${
+                        customization.mode === "dark"
+                          ? "border-[#1e1e1e]"
+                          : "border-gray-50"
+                      } border-8 group`}
                       onClick={() => {
                         const id = tracks[0].uri.split(":")[2];
                         window.open(
@@ -778,10 +803,11 @@ export default function SpotifyReceiptify() {
                         </>
                       ) : (
                         <div
-                          className={`w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center ${customization.mode === "dark"
-                            ? "bg-[#1e1e1e]"
-                            : "bg-gray-100"
-                            }`}
+                          className={`w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center ${
+                            customization.mode === "dark"
+                              ? "bg-[#1e1e1e]"
+                              : "bg-gray-100"
+                          }`}
                         >
                           <Music className="w-8 h-8 sm:w-12 sm:h-12 text-[#1DB954]" />
                         </div>
@@ -818,7 +844,11 @@ export default function SpotifyReceiptify() {
                     {tracks.slice(1).map((track, index) => (
                       <div
                         key={track.id}
-                        className="flex justify-between items-center group hover:bg-[#282828] p-2 sm:p-3 rounded-md transition-all duration-300 ease-in-out"
+                        className={`flex justify-between items-center group ${
+                          customization.mode === "dark"
+                            ? "hover:bg-[#282828]"
+                            : "hover:bg-slate-200"
+                        } p-2 sm:p-3 rounded-md transition-all duration-300 ease-in-out`}
                       >
                         <div className="flex items-center space-x-2 sm:space-x-4">
                           <span className="text-[#1DB954] w-6 text-right font-mono text-sm sm:text-base">
@@ -852,10 +882,11 @@ export default function SpotifyReceiptify() {
                           </div>
                           <div>
                             <div
-                              className={`font-medium transition-colors duration-300 text-sm sm:text-base ${customization.mode === "dark"
-                                ? "text-white group-hover:text-[#1DB954]"
-                                : "text-gray-900 group-hover:text-[#1DB954]"
-                                } ${getFontClass(customization.font)}`}
+                              className={`font-medium transition-colors duration-300 text-sm sm:text-base ${
+                                customization.mode === "dark"
+                                  ? "text-white group-hover:text-[#1DB954]"
+                                  : "text-gray-900 group-hover:text-[#1DB954]"
+                              } ${getFontClass(customization.font)}`}
                             >
                               {track.name}
                             </div>
@@ -1142,10 +1173,11 @@ export default function SpotifyReceiptify() {
                       (time) => (
                         <div
                           key={time}
-                          className={`p-3 rounded-lg text-center ${time === userStats.favoriteDayTime
-                            ? "bg-[#1DB954] text-black"
-                            : "bg-[#1e1e1e] text-[#b3b3b3]"
-                            }`}
+                          className={`p-3 rounded-lg text-center ${
+                            time === userStats.favoriteDayTime
+                              ? "bg-[#1DB954] text-black"
+                              : "bg-[#1e1e1e] text-[#b3b3b3]"
+                          }`}
                         >
                           <div className="text-sm font-medium">{time}</div>
                         </div>
@@ -1160,8 +1192,9 @@ export default function SpotifyReceiptify() {
           {/* Footer Section */}
           <Separator className="bg-[#282828]" />
           <CardFooter
-            className={`flex flex-col sm:flex-row justify-between p-3 sm:p-6 ${customization.mode === "dark" ? "bg-[#282828]" : "bg-gray-50"
-              } ${getFontClass(customization.font)}`}
+            className={`flex flex-col sm:flex-row justify-between p-3 sm:p-6 ${
+              customization.mode === "dark" ? "bg-[#282828]" : "bg-slate-50"
+            } ${getFontClass(customization.font)}`}
           >
             <div className="flex items-center space-x-2 text-[#b3b3b3]">
               <Music className="w-4 h-4" />
